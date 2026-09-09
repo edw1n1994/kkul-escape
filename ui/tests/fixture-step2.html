@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>mock reservation2</title></head><body>
+<form id="form" action="/reservation2.php" enctype="multipart/form-data">
+  <input type="hidden" name="zizum_num" value="22"><input type="hidden" name="theme_num" value="65">
+  <input type="hidden" name="theme_info_num" value="43"><input type="hidden" name="rev_days" value="2026-09-10">
+  <input type="hidden" name="theme_time_num" value="2176"><input type="hidden" name="rev_price" value="34000">
+  <input type="text" name="name" value="테스트유저">
+  <input type="number" name="mobile1" value="010"><input type="number" name="mobile2" value="1234"><input type="number" name="mobile3" value="5678">
+  <select name="payment"><option value="D" selected>D</option></select>
+  <textarea name="g-recaptcha-response"></textarea>
+  <input type="checkbox" name="agree_1" checked><input type="checkbox" name="agree_2" checked><input type="checkbox" name="agree_3">
+  <button type="submit" class="submit pc">예약하기</button>
+</form>
+<!-- 실제 reservation2 에서는 상품명/금액이 KCP 결제용 **별도 폼(order_info)** 에 있다 (step2-snapshot.json 실측) -->
+<form name="order_info" id="order_info" action="/pay/kcp_placeholder">
+  <input type="hidden" name="good_name" value="머니머니부동산(09:50)">
+  <input type="hidden" name="good_mny" value="68000">
+</form>
+<p class="goods_info">예약 상품 정보 머니머니부동산 2026.09.10 09:50 [ 안내 사항 ] -이용금액 머니머니부동산 : 68,000원</p>
+<script>
+  // 실제 사이트처럼: submit 이벤트에서 자체 검증 후 결제(order_info) 단계로 넘어가는 것을 모사한다.
+  window.__SUBMIT_COUNT = 0;
+  document.getElementById('form').addEventListener('submit', (e) => {
+    e.preventDefault();                       // 네트워크 이동 없이 카운트만 (실 결제/이동 없음)
+    window.__SUBMIT_COUNT++;
+    window.__LAST = { tok: document.querySelector('[name=g-recaptcha-response]').value.length };
+  });
+</script></body></html>

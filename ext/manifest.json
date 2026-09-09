@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "keyescape devtools unlock",
+  "version": "1.0",
+  "description": "keyescape.com 의 개발자도구 감지 / 우클릭 / F12 차단을 페이지 스크립트 실행 전에 무력화한다.",
+  "content_scripts": [
+    {
+      "matches": ["https://www.keyescape.com/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    }
+  ]
+}

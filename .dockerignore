@@ -1,0 +1,15 @@
+# 컨텍스트를 작게: 실행에 필요한 코드만 복사한다
+node_modules
+.git
+*.log
+*.out
+*.png
+*.json.tmp
+step2-snapshot.json
+flow.log
+reserve-fast.log
+reserve.log
+wait-times.log
+runs.log
+server.out
+server.err

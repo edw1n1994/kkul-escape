@@ -1,0 +1,14 @@
+services:
+  ui:
+    build: .
+    image: keyescape-ui
+    container_name: keyescape-ui
+    ports:
+      - "8898:8899"          # 호스트 8898 (mac 에 이미 8899 가 떠 있어서)
+    environment:
+      PORT: "8899"
+      CDP_PORT: "9222"
+      BIND: "0.0.0.0"        # 컨테이너 밖(포트맵)으로 노출하려면 필수
+      CHROME_ARGS: "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage"
+    shm_size: "1g"           # Chrome/shared memory
+    restart: unless-stopped

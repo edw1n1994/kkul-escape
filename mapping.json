@@ -1,0 +1,3449 @@
+{
+  "generatedAt": "2026-09-04T00:23:14.098Z",
+  "forcedDate": null,
+  "branches": [
+    {
+      "zizumNum": 26,
+      "name": "에버랜드",
+      "themes": [
+        {
+          "themeInfoNum": 71,
+          "themeNum": 78,
+          "doing": 1,
+          "name": "Memory of Poppy",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [],
+          "timeStatus": false,
+          "timeMsg": "예약가능한 시간이 없습니다."
+        },
+        {
+          "themeInfoNum": 72,
+          "themeNum": 79,
+          "doing": 1,
+          "name": "Memory of Tony",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [],
+          "timeStatus": false,
+          "timeMsg": "예약가능한 시간이 없습니다."
+        },
+        {
+          "themeInfoNum": 73,
+          "themeNum": 80,
+          "doing": 1,
+          "name": "Memory of Ricky",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [],
+          "timeStatus": false,
+          "timeMsg": "예약가능한 시간이 없습니다."
+        }
+      ]
+    },
+    {
+      "zizumNum": 23,
+      "name": "후즈데어",
+      "themes": [
+        {
+          "themeInfoNum": 63,
+          "themeNum": 71,
+          "doing": 7,
+          "name": "AYAKO",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2509,
+              "time": "09:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2510,
+              "time": "10:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2511,
+              "time": "11:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2512,
+              "time": "12:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2513,
+              "time": "13:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2514,
+              "time": "14:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2515,
+              "time": "15:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2516,
+              "time": "16:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2517,
+              "time": "17:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2518,
+              "time": "18:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2519,
+              "time": "19:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2520,
+              "time": "20:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2521,
+              "time": "20:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2522,
+              "time": "21:50",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 60,
+          "themeNum": 69,
+          "doing": 7,
+          "name": "투투 어드벤쳐",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2830,
+              "time": "09:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2831,
+              "time": "10:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2832,
+              "time": "11:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2833,
+              "time": "12:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2834,
+              "time": "13:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2835,
+              "time": "14:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2836,
+              "time": "15:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2837,
+              "time": "16:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2838,
+              "time": "17:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2839,
+              "time": "18:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2840,
+              "time": "18:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2841,
+              "time": "19:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2842,
+              "time": "20:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2843,
+              "time": "21:40",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 61,
+          "themeNum": 70,
+          "doing": 7,
+          "name": "괴록",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 3144,
+              "time": "09:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2907,
+              "time": "10:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2908,
+              "time": "11:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3135,
+              "time": "12:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2910,
+              "time": "13:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2911,
+              "time": "14:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3145,
+              "time": "15:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2914,
+              "time": "16:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3147,
+              "time": "17:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2915,
+              "time": "17:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3136,
+              "time": "19:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2917,
+              "time": "19:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2918,
+              "time": "21:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3146,
+              "time": "21:45",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 22,
+      "name": "STATION",
+      "themes": [
+        {
+          "themeInfoNum": 43,
+          "themeNum": 65,
+          "doing": 7,
+          "name": "머니머니부동산",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2210,
+              "time": "09:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2287,
+              "time": "10:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2211,
+              "time": "11:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2212,
+              "time": "12:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2288,
+              "time": "13:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2213,
+              "time": "14:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2214,
+              "time": "15:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2289,
+              "time": "16:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2215,
+              "time": "17:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2216,
+              "time": "18:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2290,
+              "time": "19:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2217,
+              "time": "20:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2291,
+              "time": "21:50",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 44,
+          "themeNum": 66,
+          "doing": 7,
+          "name": "내 방",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2383,
+              "time": "09:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2315,
+              "time": "10:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2384,
+              "time": "11:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2316,
+              "time": "12:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2385,
+              "time": "12:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2386,
+              "time": "13:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2317,
+              "time": "14:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2318,
+              "time": "15:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2387,
+              "time": "16:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2388,
+              "time": "16:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2319,
+              "time": "17:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2389,
+              "time": "18:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2320,
+              "time": "19:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2390,
+              "time": "19:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2321,
+              "time": "20:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2391,
+              "time": "21:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2322,
+              "time": "22:10",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 45,
+          "themeNum": 67,
+          "doing": 7,
+          "name": "NOSTALGIA VISTA",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2433,
+              "time": "09:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2434,
+              "time": "10:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2435,
+              "time": "11:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2436,
+              "time": "12:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2437,
+              "time": "12:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2438,
+              "time": "13:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2439,
+              "time": "14:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2440,
+              "time": "15:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2441,
+              "time": "16:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2442,
+              "time": "17:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2443,
+              "time": "17:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3477,
+              "time": "18:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2444,
+              "time": "19:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2445,
+              "time": "20:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2446,
+              "time": "21:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2447,
+              "time": "22:05",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 19,
+      "name": "LOG_IN 1",
+      "themes": [
+        {
+          "themeInfoNum": 41,
+          "themeNum": 63,
+          "doing": 7,
+          "name": "FOR FREE",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2068,
+              "time": "09:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2069,
+              "time": "10:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2070,
+              "time": "12:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2071,
+              "time": "13:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2072,
+              "time": "14:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2073,
+              "time": "16:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2074,
+              "time": "17:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2075,
+              "time": "18:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2076,
+              "time": "20:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2077,
+              "time": "21:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2078,
+              "time": "22:45",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 38,
+          "themeNum": 60,
+          "doing": 7,
+          "name": "머니머니패키지",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1882,
+              "time": "09:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1883,
+              "time": "10:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1884,
+              "time": "12:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1885,
+              "time": "13:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1887,
+              "time": "14:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1889,
+              "time": "16:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1891,
+              "time": "17:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1893,
+              "time": "18:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1895,
+              "time": "20:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1897,
+              "time": "21:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1979,
+              "time": "22:40",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 20,
+      "name": "LOG_IN 2",
+      "themes": [
+        {
+          "themeInfoNum": 83,
+          "themeNum": 95,
+          "doing": 7,
+          "name": "NOT MONKEY PROJECT",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 3485,
+              "time": "09:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3486,
+              "time": "11:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3487,
+              "time": "13:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3488,
+              "time": "15:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3489,
+              "time": "17:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3490,
+              "time": "19:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 3491,
+              "time": "21:15",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 42,
+          "themeNum": 64,
+          "doing": 7,
+          "name": "A GENTLE MONDAY",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2127,
+              "time": "09:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2128,
+              "time": "11:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2129,
+              "time": "12:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2130,
+              "time": "14:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2131,
+              "time": "15:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2133,
+              "time": "17:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2134,
+              "time": "18:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2135,
+              "time": "20:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2136,
+              "time": "21:50",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 40,
+          "themeNum": 61,
+          "doing": 7,
+          "name": "BACK TO THE SCENE+",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1926,
+              "time": "10:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1927,
+              "time": "11:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1928,
+              "time": "11:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1929,
+              "time": "12:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1930,
+              "time": "13:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1931,
+              "time": "14:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1932,
+              "time": "15:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1933,
+              "time": "16:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1934,
+              "time": "17:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1935,
+              "time": "18:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1936,
+              "time": "19:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1937,
+              "time": "20:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1938,
+              "time": "21:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1939,
+              "time": "22:00",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 18,
+      "name": "메모리컴퍼니",
+      "themes": [
+        {
+          "themeInfoNum": 34,
+          "themeNum": 57,
+          "doing": 7,
+          "name": "FILM BY EDDY",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2106,
+              "time": "09:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1801,
+              "time": "10:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1802,
+              "time": "12:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1803,
+              "time": "13:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1804,
+              "time": "15:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1805,
+              "time": "16:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1806,
+              "time": "18:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1807,
+              "time": "19:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1808,
+              "time": "21:25",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 35,
+          "themeNum": 58,
+          "doing": 7,
+          "name": "FILM BY STEVE",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2304,
+              "time": "09:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1839,
+              "time": "10:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1840,
+              "time": "11:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1841,
+              "time": "12:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1842,
+              "time": "13:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1843,
+              "time": "14:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1844,
+              "time": "15:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1845,
+              "time": "16:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1846,
+              "time": "17:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1847,
+              "time": "18:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1848,
+              "time": "19:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2041,
+              "time": "20:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1849,
+              "time": "21:40",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 36,
+          "themeNum": 59,
+          "doing": 7,
+          "name": "FILM BY BOB",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1988,
+              "time": "09:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2812,
+              "time": "10:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1989,
+              "time": "12:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1990,
+              "time": "13:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2042,
+              "time": "14:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1991,
+              "time": "16:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2043,
+              "time": "17:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1992,
+              "time": "19:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2044,
+              "time": "20:40",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2045,
+              "time": "22:05",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 16,
+      "name": "우주라이크",
+      "themes": [
+        {
+          "themeInfoNum": 33,
+          "themeNum": 56,
+          "doing": 7,
+          "name": "WANNA GO HOME",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1773,
+              "time": "10:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1738,
+              "time": "11:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1774,
+              "time": "13:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1739,
+              "time": "14:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1740,
+              "time": "16:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1775,
+              "time": "17:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1741,
+              "time": "19:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1742,
+              "time": "20:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1776,
+              "time": "22:00",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 31,
+          "themeNum": 55,
+          "doing": 7,
+          "name": "US",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1682,
+              "time": "09:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1683,
+              "time": "11:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1684,
+              "time": "12:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1685,
+              "time": "13:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1686,
+              "time": "15:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1687,
+              "time": "16:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1689,
+              "time": "17:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1690,
+              "time": "19:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1691,
+              "time": "20:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1692,
+              "time": "21:55",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 14,
+      "name": "더오름",
+      "themes": [
+        {
+          "themeInfoNum": 27,
+          "themeNum": 51,
+          "doing": 7,
+          "name": "엔제리오",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1523,
+              "time": "09:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1524,
+              "time": "11:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1525,
+              "time": "12:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1526,
+              "time": "14:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1527,
+              "time": "15:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1528,
+              "time": "17:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1529,
+              "time": "18:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1530,
+              "time": "20:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1531,
+              "time": "21:50",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 26,
+          "themeNum": 48,
+          "doing": 7,
+          "name": "네드",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1478,
+              "time": "10:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1479,
+              "time": "11:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1480,
+              "time": "13:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1481,
+              "time": "14:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1482,
+              "time": "16:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1483,
+              "time": "17:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1484,
+              "time": "19:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1485,
+              "time": "20:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1783,
+              "time": "22:00",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 3,
+      "name": "강남점",
+      "themes": [
+        {
+          "themeInfoNum": 7,
+          "themeNum": 7,
+          "doing": 14,
+          "name": "그카지말라캤자나",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 34,
+              "time": "13:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2116,
+              "time": "14:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 61,
+              "time": "15:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 62,
+              "time": "16:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 63,
+              "time": "18:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 64,
+              "time": "19:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 65,
+              "time": "20:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1468,
+              "time": "21:30",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 6,
+          "themeNum": 6,
+          "doing": 14,
+          "name": "살랑살랑연구소",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 51,
+              "time": "13:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 52,
+              "time": "15:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 53,
+              "time": "16:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 54,
+              "time": "17:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 55,
+              "time": "18:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 56,
+              "time": "20:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 57,
+              "time": "21:15",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 5,
+          "themeNum": 5,
+          "doing": 14,
+          "name": "월야애담-영문병행표기",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 42,
+              "time": "13:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 43,
+              "time": "14:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 44,
+              "time": "16:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 45,
+              "time": "17:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2112,
+              "time": "18:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 46,
+              "time": "19:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 47,
+              "time": "21:05",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 10,
+      "name": "홍대점",
+      "themes": [
+        {
+          "themeInfoNum": 21,
+          "themeNum": 41,
+          "doing": 14,
+          "name": "삐릿-뽀",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1330,
+              "time": "10:00",
+              "enable": "N",
+              "sale": "(할인)"
+            },
+            {
+              "value": 1331,
+              "time": "11:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1333,
+              "time": "13:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1332,
+              "time": "15:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1334,
+              "time": "16:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1335,
+              "time": "18:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1336,
+              "time": "20:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1337,
+              "time": "21:40",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 22,
+          "themeNum": 45,
+          "doing": 14,
+          "name": "홀리데이",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1351,
+              "time": "10:00",
+              "enable": "Y",
+              "sale": "(할인)"
+            },
+            {
+              "value": 1356,
+              "time": "11:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1357,
+              "time": "12:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1358,
+              "time": "14:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 1359,
+              "time": "15:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1360,
+              "time": "16:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1352,
+              "time": "18:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1353,
+              "time": "19:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1354,
+              "time": "20:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2810,
+              "time": "22:10",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 23,
+          "themeNum": 43,
+          "doing": 14,
+          "name": "고백",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 1432,
+              "time": "10:00",
+              "enable": "Y",
+              "sale": "(할인)"
+            },
+            {
+              "value": 1433,
+              "time": "11:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1434,
+              "time": "13:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1435,
+              "time": "15:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1436,
+              "time": "17:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1437,
+              "time": "19:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1438,
+              "time": "21:30",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 9,
+      "name": "부산점",
+      "themes": [
+        {
+          "themeInfoNum": 10,
+          "themeNum": 35,
+          "doing": 14,
+          "name": "난쟁이의 장난-영문병행표기",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 443,
+              "time": "12:15",
+              "enable": "N",
+              "sale": "(할인)"
+            },
+            {
+              "value": 444,
+              "time": "13:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 445,
+              "time": "14:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 446,
+              "time": "16:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 447,
+              "time": "17:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 448,
+              "time": "18:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 449,
+              "time": "20:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 450,
+              "time": "21:25",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 9,
+          "themeNum": 36,
+          "doing": 14,
+          "name": "신비의숲 고대마법의 비밀",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 425,
+              "time": "12:30",
+              "enable": "N",
+              "sale": "(할인)"
+            },
+            {
+              "value": 426,
+              "time": "13:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 427,
+              "time": "15:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 428,
+              "time": "16:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 429,
+              "time": "17:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 430,
+              "time": "19:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 431,
+              "time": "20:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 432,
+              "time": "21:35",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 11,
+          "themeNum": 39,
+          "doing": 14,
+          "name": "셜록 죽음의 전화",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 452,
+              "time": "12:30",
+              "enable": "N",
+              "sale": "(할인)"
+            },
+            {
+              "value": 453,
+              "time": "13:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 454,
+              "time": "15:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 455,
+              "time": "16:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 456,
+              "time": "17:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 457,
+              "time": "19:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 458,
+              "time": "20:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 1730,
+              "time": "21:35",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 16,
+          "themeNum": 37,
+          "doing": 14,
+          "name": "정신병동",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 416,
+              "time": "12:25",
+              "enable": "N",
+              "sale": "(할인)"
+            },
+            {
+              "value": 417,
+              "time": "13:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 418,
+              "time": "14:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 419,
+              "time": "16:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 420,
+              "time": "17:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 421,
+              "time": "18:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 422,
+              "time": "20:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 423,
+              "time": "21:30",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 18,
+          "themeNum": 38,
+          "doing": 14,
+          "name": "파파라치",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 434,
+              "time": "12:15",
+              "enable": "N",
+              "sale": "(할인)"
+            },
+            {
+              "value": 435,
+              "time": "13:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 436,
+              "time": "14:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 437,
+              "time": "16:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 438,
+              "time": "17:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 439,
+              "time": "18:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 440,
+              "time": "20:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 441,
+              "time": "21:25",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 7,
+      "name": "전주점",
+      "themes": [
+        {
+          "themeInfoNum": 6,
+          "themeNum": 30,
+          "doing": 14,
+          "name": "살랑살랑연구소",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 657,
+              "time": "11:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 658,
+              "time": "12:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 659,
+              "time": "13:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 660,
+              "time": "15:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 661,
+              "time": "16:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 662,
+              "time": "17:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 663,
+              "time": "18:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 664,
+              "time": "20:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 665,
+              "time": "21:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 666,
+              "time": "22:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 667,
+              "time": "23:55",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 5,
+          "themeNum": 29,
+          "doing": 14,
+          "name": "월야애담-영문병행표기",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 635,
+              "time": "11:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 636,
+              "time": "12:30",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 637,
+              "time": "13:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 638,
+              "time": "15:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 639,
+              "time": "16:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 640,
+              "time": "17:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 641,
+              "time": "18:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 642,
+              "time": "20:00",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 643,
+              "time": "21:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 644,
+              "time": "22:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 645,
+              "time": "23:45",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 17,
+          "themeNum": 31,
+          "doing": 14,
+          "name": "혜화잡화점",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 624,
+              "time": "11:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 625,
+              "time": "12:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 626,
+              "time": "13:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 627,
+              "time": "14:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 628,
+              "time": "16:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 629,
+              "time": "17:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 630,
+              "time": "18:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 631,
+              "time": "19:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 632,
+              "time": "21:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 633,
+              "time": "22:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 634,
+              "time": "23:40",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 8,
+          "themeNum": 33,
+          "doing": 14,
+          "name": "사라진 목격자",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 646,
+              "time": "11:20",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 647,
+              "time": "12:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 648,
+              "time": "13:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 649,
+              "time": "15:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 650,
+              "time": "16:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 651,
+              "time": "17:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 652,
+              "time": "18:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 653,
+              "time": "20:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 654,
+              "time": "21:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 655,
+              "time": "22:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 656,
+              "time": "23:50",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 25,
+      "name": "무비무드",
+      "themes": [
+        {
+          "themeInfoNum": 65,
+          "themeNum": 72,
+          "doing": 7,
+          "name": "HAVE A GOOD TAPE, DAVE",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2610,
+              "time": "11:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2611,
+              "time": "12:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2612,
+              "time": "13:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2613,
+              "time": "14:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2614,
+              "time": "16:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2615,
+              "time": "17:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2616,
+              "time": "18:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2617,
+              "time": "19:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2618,
+              "time": "21:05",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 66,
+          "themeNum": 73,
+          "doing": 7,
+          "name": "Cat",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2646,
+              "time": "11:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2647,
+              "time": "12:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2648,
+              "time": "13:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2649,
+              "time": "15:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2650,
+              "time": "16:15",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2651,
+              "time": "17:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2652,
+              "time": "18:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2653,
+              "time": "20:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2654,
+              "time": "21:15",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 67,
+          "themeNum": 74,
+          "doing": 7,
+          "name": "시아와세 환전소",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2673,
+              "time": "10:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2674,
+              "time": "12:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2675,
+              "time": "13:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2676,
+              "time": "14:35",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2677,
+              "time": "15:50",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2678,
+              "time": "17:05",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2679,
+              "time": "18:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2680,
+              "time": "19:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2681,
+              "time": "20:50",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 68,
+          "themeNum": 75,
+          "doing": 7,
+          "name": "AFTERLIFE AIRLINES",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2709,
+              "time": "10:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2710,
+              "time": "12:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2711,
+              "time": "13:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2712,
+              "time": "14:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2713,
+              "time": "15:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2714,
+              "time": "17:10",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2715,
+              "time": "18:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2716,
+              "time": "19:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2717,
+              "time": "20:55",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 69,
+          "themeNum": 76,
+          "doing": 7,
+          "name": "5관 E열 4번",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2781,
+              "time": "11:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2782,
+              "time": "12:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2783,
+              "time": "13:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2784,
+              "time": "14:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2785,
+              "time": "16:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2786,
+              "time": "17:25",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2787,
+              "time": "18:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2788,
+              "time": "19:55",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2789,
+              "time": "21:10",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 70,
+          "themeNum": 77,
+          "doing": 7,
+          "name": "ONCE OVEN A TIME",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2745,
+              "time": "11:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2746,
+              "time": "12:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2747,
+              "time": "13:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2748,
+              "time": "14:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2749,
+              "time": "16:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2750,
+              "time": "17:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2751,
+              "time": "18:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2752,
+              "time": "19:45",
+              "enable": "N",
+              "sale": ""
+            },
+            {
+              "value": 2753,
+              "time": "21:00",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    },
+    {
+      "zizumNum": 29,
+      "name": "무비무드 전주",
+      "themes": [
+        {
+          "themeInfoNum": 76,
+          "themeNum": 87,
+          "doing": 7,
+          "name": "HAVE A GOOD TAPE, DAVE(전주)",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2960,
+              "time": "11:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2961,
+              "time": "12:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2962,
+              "time": "13:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2963,
+              "time": "14:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2964,
+              "time": "16:10",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2965,
+              "time": "17:25",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2966,
+              "time": "18:40",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2967,
+              "time": "19:55",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2968,
+              "time": "21:10",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 79,
+          "themeNum": 91,
+          "doing": 7,
+          "name": "5관 E열 4번(전주)",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 3104,
+              "time": "11:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3105,
+              "time": "12:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3106,
+              "time": "13:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3107,
+              "time": "15:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3108,
+              "time": "16:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3109,
+              "time": "17:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3110,
+              "time": "18:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3111,
+              "time": "20:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3112,
+              "time": "21:15",
+              "enable": "N",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 78,
+          "themeNum": 89,
+          "doing": 7,
+          "name": "AFTERLIFE AIRLINES(전주)",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 3041,
+              "time": "11:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3042,
+              "time": "12:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3043,
+              "time": "13:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3044,
+              "time": "14:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3045,
+              "time": "16:05",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3046,
+              "time": "17:20",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3047,
+              "time": "18:35",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3048,
+              "time": "19:50",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 3049,
+              "time": "21:05",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        },
+        {
+          "themeInfoNum": 77,
+          "themeNum": 88,
+          "doing": 7,
+          "name": "Cat's Lock(전주)",
+          "serverToday": "2026-09-04",
+          "calendar": {
+            "today": "2026-09-04",
+            "daysInMonth": 30,
+            "firstDayOfMonth": "2"
+          },
+          "queryDate": "2026-09-04",
+          "times": [
+            {
+              "value": 2987,
+              "time": "11:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2988,
+              "time": "12:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2989,
+              "time": "13:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2990,
+              "time": "14:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2991,
+              "time": "16:00",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2992,
+              "time": "17:15",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2993,
+              "time": "18:30",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2994,
+              "time": "19:45",
+              "enable": "Y",
+              "sale": ""
+            },
+            {
+              "value": 2995,
+              "time": "21:00",
+              "enable": "Y",
+              "sale": ""
+            }
+          ],
+          "timeStatus": true,
+          "timeMsg": ""
+        }
+      ]
+    }
+  ]
+}

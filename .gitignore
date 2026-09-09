@@ -1,0 +1,15 @@
+# 로컬 전용 개인 값 — 절대 커밋하지 않는다 (예약 화면에 자동 입력되는 실값)
+ui/local.env
+local.env
+
+# 실행 산출물 / 로그 / 증거물
+*.log
+*.out
+*.png
+ui/runs/
+step2-snapshot.json
+netlog*/
+
+# 잡동사니
+.DS_Store
+node_modules/

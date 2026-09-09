@@ -1,0 +1,91 @@
+기준일(serverToday) = 2026-09-04
+
+### 지점 26  에버랜드   [테마 3개]
+   themeNum=78   themeInfoNum=71   doing=1   Memory of Poppy            2026-09-04 가능 0/0
+   themeNum=79   themeInfoNum=72   doing=1   Memory of Tony             2026-09-04 가능 0/0
+   themeNum=80   themeInfoNum=73   doing=1   Memory of Ricky            2026-09-04 가능 0/0
+
+### 지점 23  후즈데어   [테마 3개]
+   themeNum=71   themeInfoNum=63   doing=7   AYAKO                      2026-09-04 가능 0/14
+   themeNum=69   themeInfoNum=60   doing=7   투투 어드벤쳐                    2026-09-04 가능 0/14
+   themeNum=70   themeInfoNum=61   doing=7   괴록                         2026-09-04 가능 0/14
+
+### 지점 22  STATION   [테마 3개]
+   themeNum=65   themeInfoNum=43   doing=7   머니머니부동산                    2026-09-04 가능 0/13
+   themeNum=66   themeInfoNum=44   doing=7   내 방                        2026-09-04 가능 0/17
+   themeNum=67   themeInfoNum=45   doing=7   NOSTALGIA VISTA            2026-09-04 가능 0/16
+
+### 지점 19  LOG_IN 1   [테마 2개]
+   themeNum=63   themeInfoNum=41   doing=7   FOR FREE                   2026-09-04 가능 0/11
+   themeNum=60   themeInfoNum=38   doing=7   머니머니패키지                    2026-09-04 가능 0/11
+
+### 지점 20  LOG_IN 2   [테마 3개]
+   themeNum=95   themeInfoNum=83   doing=7   NOT MONKEY PROJECT         2026-09-04 가능 0/7
+   themeNum=64   themeInfoNum=42   doing=7   A GENTLE MONDAY            2026-09-04 가능 2/9
+   themeNum=61   themeInfoNum=40   doing=7   BACK TO THE SCENE+         2026-09-04 가능 1/14
+
+### 지점 18  메모리컴퍼니   [테마 3개]
+   themeNum=57   themeInfoNum=34   doing=7   FILM BY EDDY               2026-09-04 가능 0/9
+   themeNum=58   themeInfoNum=35   doing=7   FILM BY STEVE              2026-09-04 가능 0/13
+   themeNum=59   themeInfoNum=36   doing=7   FILM BY BOB                2026-09-04 가능 0/10
+
+### 지점 16  우주라이크   [테마 2개]
+   themeNum=56   themeInfoNum=33   doing=7   WANNA GO HOME              2026-09-04 가능 1/9
+   themeNum=55   themeInfoNum=31   doing=7   US                         2026-09-04 가능 5/10
+
+### 지점 14  더오름   [테마 2개]
+   themeNum=51   themeInfoNum=27   doing=7   엔제리오                       2026-09-04 가능 6/9
+   themeNum=48   themeInfoNum=26   doing=7   네드                         2026-09-04 가능 3/9
+
+### 지점 3  강남점   [테마 3개]
+   themeNum=7    themeInfoNum=7    doing=14  그카지말라캤자나                   2026-09-04 가능 6/8
+   themeNum=6    themeInfoNum=6    doing=14  살랑살랑연구소                    2026-09-04 가능 3/7
+   themeNum=5    themeInfoNum=5    doing=14  월야애담-영문병행표기                2026-09-04 가능 6/7
+
+### 지점 10  홍대점   [테마 3개]
+   themeNum=41   themeInfoNum=21   doing=14  삐릿-뽀                       2026-09-04 가능 7/8
+   themeNum=45   themeInfoNum=22   doing=14  홀리데이                       2026-09-04 가능 9/10
+   themeNum=43   themeInfoNum=23   doing=14  고백                         2026-09-04 가능 7/7
+
+### 지점 9  부산점   [테마 5개]
+   themeNum=35   themeInfoNum=10   doing=14  난쟁이의 장난-영문병행표기             2026-09-04 가능 7/8
+   themeNum=36   themeInfoNum=9    doing=14  신비의숲 고대마법의 비밀              2026-09-04 가능 7/8
+   themeNum=39   themeInfoNum=11   doing=14  셜록 죽음의 전화                  2026-09-04 가능 7/8
+   themeNum=37   themeInfoNum=16   doing=14  정신병동                       2026-09-04 가능 7/8
+   themeNum=38   themeInfoNum=18   doing=14  파파라치                       2026-09-04 가능 7/8
+
+### 지점 7  전주점   [테마 4개]
+   themeNum=30   themeInfoNum=6    doing=14  살랑살랑연구소                    2026-09-04 가능 8/11
+   themeNum=29   themeInfoNum=5    doing=14  월야애담-영문병행표기                2026-09-04 가능 7/11
+   themeNum=31   themeInfoNum=17   doing=14  혜화잡화점                      2026-09-04 가능 9/11
+   themeNum=33   themeInfoNum=8    doing=14  사라진 목격자                    2026-09-04 가능 9/11
+
+### 지점 25  무비무드   [테마 6개]
+   themeNum=72   themeInfoNum=65   doing=7   HAVE A GOOD TAPE, DAVE     2026-09-04 가능 6/9
+   themeNum=73   themeInfoNum=66   doing=7   Cat                        2026-09-04 가능 8/9
+   themeNum=74   themeInfoNum=67   doing=7   시아와세 환전소                   2026-09-04 가능 5/9
+   themeNum=75   themeInfoNum=68   doing=7   AFTERLIFE AIRLINES         2026-09-04 가능 6/9
+   themeNum=76   themeInfoNum=69   doing=7   5관 E열 4번                   2026-09-04 가능 5/9
+   themeNum=77   themeInfoNum=70   doing=7   ONCE OVEN A TIME           2026-09-04 가능 7/9
+
+### 지점 29  무비무드 전주   [테마 4개]
+   themeNum=87   themeInfoNum=76   doing=7   HAVE A GOOD TAPE, DAVE(전주) 2026-09-04 가능 9/9
+   themeNum=91   themeInfoNum=79   doing=7   5관 E열 4번(전주)               2026-09-04 가능 8/9
+   themeNum=89   themeInfoNum=78   doing=7   AFTERLIFE AIRLINES(전주)     2026-09-04 가능 9/9
+   themeNum=88   themeInfoNum=77   doing=7   Cat's Lock(전주)             2026-09-04 가능 9/9
+
+=== 시간대 value 샘플 (지점/테마/날짜별 themeTimeNum) ===
+
+지점 26 에버랜드 / themeNum 78 Memory of Poppy / 2026-09-04
+   
+
+지점 23 후즈데어 / themeNum 71 AYAKO / 2026-09-04
+   09:55=2509(마감)  10:50=2510(마감)  11:45=2511(마감)  12:40=2512(마감)  13:35=2513(마감)  14:30=2514(마감)  15:25=2515(마감)  16:20=2516(마감)  17:15=2517(마감)  18:10=2518(마감)  19:05=2519(마감)  20:00=2520(마감)  20:55=2521(마감)  21:50=2522(마감)
+
+지점 22 STATION / themeNum 65 머니머니부동산 / 2026-09-04
+   09:50=2210(마감)  10:50=2287(마감)  11:50=2211(마감)  12:50=2212(마감)  13:50=2288(마감)  14:50=2213(마감)  15:50=2214(마감)  16:50=2289(마감)  17:50=2215(마감)  18:50=2216(마감)  19:50=2290(마감)  20:50=2217(마감)  21:50=2291(마감)
+
+지점 19 LOG_IN 1 / themeNum 63 FOR FREE / 2026-09-04
+   09:30=2068(마감)  10:50=2069(마감)  12:10=2070(마감)  13:30=2071(마감)  14:50=2072(마감)  16:10=2073(마감)  17:30=2074(마감)  18:50=2075(마감)  20:10=2076(마감)  21:30=2077(마감)  22:45=2078(마감)
+
+전체 데이터는 mapping.json 에 지점/테마/시간별로 전부 들어 있음
