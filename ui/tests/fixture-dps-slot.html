@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>행복 / 10:20 : 단편선 (목업)</title></head>
+<body>
+<!--
+  슬롯 페이지(reserve_g?idx=…&day=…) 목업. 실제 구조를 본떴다:
+    · #booking_f 안에 hidden 예약좌표(backurl/prod_idx/start_day/end_day)
+    · '예약하기' 는 PC/모바일 2개가 마크업되어 있고 PC 것만 보인다 → 화면에 보이는 개수로 판단해야 한다
+    · 클릭 카운터(window.__BOOK_COUNT) 를 두어 프리뷰/거부 시 0회임을 검증한다
+  로그인 여부는 window.setGuest(true|false) 로 전환한다.
+-->
+<div class="profile-area" id="profile"></div>
+
+<div class="booking_view">
+  <form id="booking_f" onsubmit="return false">
+    <input type="hidden" name="backurl" value="https://dps.example/reserve_g?idx=36&day=20260915">
+    <input type="hidden" name="prod_idx" value="36">
+    <input type="hidden" name="start_day" value="2026-09-15">
+    <input type="hidden" name="start_timestamp" value="1789550400">
+    <input type="hidden" name="end_day" value="2026-09-15">
+    <input type="hidden" name="end_timestamp" value="1789550400">
+  </form>
+  <p>플레이 타임: 80분 &nbsp; 행복 / 10:20 &nbsp; 1일 2026-09-15(화) 56,000원 총 합계 56,000원</p>
+  <p>예약금 입금 안내: 무통장입금 (예약자와 입금자명 동일해야 합니다)</p>
+  <div class="buy_btns clearfix holder">
+    <div class="fixed_btn book_btn _book_btn">
+      <a class="btn buy bg-brand" href="javascript:;" onclick="window.__BOOK_COUNT=(window.__BOOK_COUNT||0)+1">예약하기</a>
+    </div>
+    <div class="fixed_btn book_btn mobile" style="display:none">
+      <a class="btn buy bg-brand second" href="javascript:;" onclick="window.__BOOK_COUNT=(window.__BOOK_COUNT||0)+1">예약하기</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__BOOK_COUNT = 0;
+  window.setGuest = function (g) {
+    document.getElementById('profile').innerHTML = g
+      ? '<a href="javascript:;"><div class="member-info guest full-width"><span>로그인이 필요합니다.</span><button>로그인</button></div></a>'
+      : '<a href="/logout.cm">로그아웃</a><div class="member-info full-width">테스트유저</div>';
+  };
+  window.setGuest(true);
+</script>
+</body>
+</html>

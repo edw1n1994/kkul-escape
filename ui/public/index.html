@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>키이스케이프 예약 사격대</title>
+<title>예약도우미</title>
 <style>
 :root{--bg:#0e1116;--panel:#161b22;--line:#232b36;--tx:#e6edf3;--dim:#8b98a5;--ok:#2ea043;--bad:#f85149;--ac:#388bfd;--warn:#d29922}
 *{box-sizing:border-box}
@@ -50,6 +50,10 @@ button.gh{background:transparent}
 button:disabled{opacity:.45;cursor:not-allowed}
 .hint{font-size:12px;color:var(--dim);margin-top:8px}
 .hint b{color:var(--tx)}
+.grid>.hint,.dcols>.hint{grid-column:1/-1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.slot-empty{display:grid;gap:4px}
+.auto-reserve{display:inline-flex;gap:8px;align-items:center;margin:0;font-weight:600;cursor:pointer;white-space:nowrap}
+.auto-reserve input{width:16px;height:16px;flex:0 0 16px;margin:0;padding:0;accent-color:var(--ac)}
 pre#log{height:calc(100vh - 210px);min-height:320px;overflow:auto;margin:0;padding:10px;background:#080b0f;border:1px solid var(--line);border-radius:8px;font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 .k{color:#79c0ff}.g{color:#7ee787}.r{color:#ff7b72}.y{color:#e3b341}.d{color:#6e7681}
 table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
@@ -66,13 +70,14 @@ th{color:var(--dim);font-weight:500}
 </head>
 <body>
 <header>
-  <h1>🎯 예약 사격대</h1>
+  <h1>🎯 예약 도우미</h1>
   <span class="tabs" id="siteTabs"></span>
   <span class="badge" id="bCdp">CDP 확인 중</span>
   <span class="badge" id="bToday">기준일 -</span>
   <span class="badge" id="bRun">대기</span>
   <span class="badge" id="bOpen">오픈까지 -</span>
   <span class="badge" id="bLock" title="클릭하면 차단을 다시 해제합니다" onclick="lockFix()">DevTools -</span>
+  <span class="badge" id="bLogin" title="이 사이트의 로그인 상태입니다. 클릭하면 다시 확인합니다" onclick="checkLogin(true)">로그인 확인 중</span>
   <button class="gh" onclick="loadEnv()">새로고침</button>
 </header>
 
@@ -108,13 +113,14 @@ th{color:var(--dim);font-weight:500}
       <div class="row">
         <div><label>예약자 이름 (자동 입력될 값)</label><input id="pname" placeholder="브라우저에 저장되어 다시 채워집니다"></div>
         <div><label>휴대폰 / 연락처 (자동 입력될 값)</label><input id="hp" placeholder="010-0000-0000"></div>
+        <div id="depWrap" style="display:none"><label>입금자명 (무통장입금)</label><input id="dep" placeholder="예약자명과 같아야 예약이 유지됩니다"></div>
       </div>
       <div class="hint" id="openInfo">날짜를 고르면 그 날짜가 예약 열리는 시각이 자동으로 세팅됩니다 <small>(지점별 오픈 시각 출처: reservation.php)</small>.</div>
-      <div id="subRow" style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <label style="display:flex;gap:6px;align-items:center;font-weight:600;cursor:pointer">
+      <div id="subRow" style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <label class="auto-reserve">
           <input type="checkbox" id="autosub" onchange="onAutoSub()"> 캡차 통과 후 '예약하기' 자동 클릭
         </label>
-        <small class="hint"><b>reCAPTCHA '로봇이 아닙니다' 는 여전히 사람이 클릭</b>합니다. 토큰이 생긴 뒤 좌표/약관/예약자/금액을 검증하고 버튼을 <b>1회</b> 누릅니다(기본 off).</small>
+        <small class="hint"><b>reCAPTCHA '로봇이 아닙니다' 는 여전히 사람이 클릭</b>합니다. 토큰이 생긴 뒤 좌표/약관/예약자/금액을 검증하고 버튼을 <b>1회</b> 누릅니다(기본 off). 단편선에는 캡차가 없지만, 마지막 <b>'결제하기'</b> 는 어떤 경우에도 누르지 않습니다.</small>
       </div>
       <div class="btns">
         <button class="pri" onclick="reserve()">🎯 예약</button>
@@ -122,9 +128,6 @@ th{color:var(--dim);font-weight:500}
         <button onclick="fire(true)">🧪 슬롯 상태만 조회</button>
         <button class="gh" onclick="stop()">중단</button>
       </div>
-      <div class="hint" id="flowHint">위 이름/휴대폰 은 reservation2 폼에 자동으로 채워질 값입니다(브라우저에 기억). 인원은 사이트 기본값, 폴링 종료 60초는 고정.
-        <b>Step1 화면은 통째로 생략하고 reservation2.php 로 직접 POST</b> 하며,
-        <b>reCAPTCHA 체크는 직접</b> 해야 합니다. 위 '캡차 통과 후 자동 클릭'을 켜면 그 직후 <b>'예약하기' 까지 자동</b>으로 누릅니다.</div>
     </section>
   </div>
 
@@ -154,9 +157,6 @@ function copySite() {
   $('openHint').innerHTML = zw
     ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
     : '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.';
-  $('flowHint').innerHTML = zw
-    ? "위 이름/연락처 는 제로월드 예약 폼에 자동 입력될 값입니다(브라우저에 기억 · 연락처는 <code>010-0000-0000</code> 13자). 예약 페이지가 한 장이라 <b>날짜/테마/시간 선택을 그 페이지에서 확정</b>하고, <b>이미지 자동등록방지 코드 입력과 '예약하기' 클릭은 직접</b> 해야 예약이 확정됩니다."
-    : "위 이름/휴대폰 은 reservation2 폼에 자동으로 채워질 값입니다(브라우저에 기억). 인원은 사이트 기본값, 폴링 종료 60초는 고정. <b>Step1 화면은 통째로 생략하고 reservation2.php 로 직접 POST</b> 하며, <b>reCAPTCHA 체크는 직접</b> 하고, 위 '자동 클릭'을 켜면 직후 <b>'예약하기' 까지</b> 누릅니다.";
   $('step2Title').firstChild.textContent = zw ? '예약 폼 상태 ' : 'Step2 도착 상태 ';
   // '예약하기' 자동 클릭은 키이스케이프 Step2 만 해당한다 (제로월드는 제출을 자동화하지 않는다)
   $('subRow').style.display = zw ? 'none' : 'flex';
@@ -195,7 +195,7 @@ const esc = (s) => String(s).replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp
 /* ---------- 로그 ---------- */
 function paint(line) {
   const cls = /\[(FAIL|MISS|WARN|BLOCK|ABORT)\]/.test(line) || (/\[EXIT\]/.test(line) && !/성공/.test(line)) ? 'r'
-    : /\[(HIT|OK|STEP2|READY|POST|SLOTS|CAPTCHA|CHECK|SUBMIT|RESULT|ARM|WATCH|UNLOCK)\]/.test(line) ? 'g'
+    : /\[(HIT|OK|STEP2|READY|POST|SLOTS|CAPTCHA|CHECK|SUBMIT|RESULT|ARM|WATCH|UNLOCK|SLOT|ORDER|LOGIN|PREVIEW|DPS)\]/.test(line) ? 'g'
     : /\[(POLL|WAIT|IDLE|NAV)\]/.test(line) ? 'd'
     : /\[(TODO|STOP|HANDOFF|ALERT)\]/.test(line) ? 'y' : '';
   return cls ? `<span class="${cls}">${esc(line)}</span>` : esc(line);
@@ -227,6 +227,8 @@ async function loadEnv() {
   S.today = e.serverToday || '';
   $('bToday').textContent = '서버기준일 ' + (e.serverToday || '-');
   $('bToday').title = e.serverMsg || '';
+  if ($('depWrap')) $('depWrap').style.display = e.deposit ? '' : 'none';   // 입금자명은 무통장입금 사이트에서만
+  checkLogin();
   const r = $('bRun');
   r.textContent = e.running ? '실행 중 (pid ' + e.pid + ')' : e.exit ? '마지막: ' + e.exit : '대기';
   r.className = 'badge ' + (e.running ? 'ok' : '');
@@ -235,7 +237,7 @@ async function loadEnv() {
     $('zizum').innerHTML = (e.branches || []).map((b) => `<option value="${b.num}">${b.name} (${b.num})</option>`).join('');
     copySite();
   }
-  document.title = (e.siteLabel || '예약') + ' 사격대';
+  document.title = '예약도우미';
 }
 async function loadThemes() {
   const d = await (await fetch('/api/themes?zizum=' + $('zizum').value + '&site=' + S.site)).json();
@@ -301,7 +303,9 @@ async function loadSlots() {
     }
   }
   if (!SLOT_CACHE.length) {
-    $('slots').innerHTML = '<span class="hint">이 날짜는 아직 슬롯 목록이 없습니다 ' + esc(d.msg || '') + ' — 오픈 시각에 창이 열리면 채워집니다.</span>';
+    $('slots').innerHTML = '<div class="hint slot-empty"><span>이 날짜는 아직 슬롯 목록이 없습니다.</span>'
+      + (d.msg ? '<span>' + esc(d.msg) + '</span>' : '')
+      + '<span>오픈 시각에 창이 열리면 채워집니다.</span></div>';
     return;
   }
   SLOT_CACHE = SLOT_CACHE.filter((s) => s.time);
@@ -317,7 +321,22 @@ function pickTime(t) {
 }
 /* 예약자 정보는 폼으로 받고 브라우저에 기억한다 (reservation2 자동 입력값) */
 function saveBuyer() {
-  localStorage.setItem('ke.buyer', JSON.stringify({ name: $('pname').value.trim(), hp: $('hp').value.trim() }));
+  localStorage.setItem('ke.buyer', JSON.stringify({
+    name: $('pname').value.trim(), hp: $('hp').value.trim(), dep: ($('dep') ? $('dep').value : '').trim(),
+  }));
+}
+/* 로그인 배지 — 단편선은 로그인이 곧 예약 가능 여부다 (예약하기 버튼이 openLogin 으로 감싸여 있다) */
+async function checkLogin(force) {
+  const b = $('bLogin');
+  if (!b) return;
+  if (force) { b.textContent = '로그인 확인 중…'; b.className = 'badge'; }
+  const d = await fetch(`/api/login?site=${S.site}&cdp=${S.cdp || 9222}`).then((r) => r.json()).catch(() => null);
+  if (!d) { b.textContent = '로그인 확인 불가'; b.className = 'badge bad'; return; }
+  if (!d.required) { b.textContent = '로그인 불필요'; b.className = 'badge'; b.title = d.msg || ''; return; }
+  b.textContent = d.loggedIn === true ? ('로그인됨 ' + ((d.msg.match(/\((.+)\)/) || [])[1] || ''))
+    : d.loggedIn === false ? '로그아웃 — 예약 불가' : '로그인 확인 불가';
+  b.className = 'badge ' + (d.loggedIn === true ? 'ok' : d.loggedIn === false ? 'bad' : '');
+  b.title = (d.msg || '') + (d.source ? ' / 출처: ' + d.source : '');
 }
 
 /* ---------- 오픈 시각 자동 계산 (입력란 없음 — 항상 서버 계산값) ---------- */
@@ -356,6 +375,7 @@ async function fire(dry, wo) {
     site: S.site,
     zizum: $('zizum').value, theme: t.theme, info: t.info, date: S.date, tname: t.name,
     times: S.time, deadline: DEF.deadline, name: name || DEF.name, hp: hp || DEF.hp,
+    dep: ($('dep').value || '').trim(),
   };
   if (dry) body.dry = true;
   else {
@@ -417,8 +437,8 @@ async function checkLock(force) {
   const d = await fetch('/api/unlock' + (S.cdp ? '?cdp=' + S.cdp : '')).then((r) => r.json()).catch(() => null);
   if (!d) { b.textContent = 'DevTools 확인 불가'; b.className = 'badge bad'; return; }
   if (d.cdp === 'DOWN') { b.textContent = 'CDP 없음 → 차단검사 불가'; b.className = 'badge bad'; return; }
-  if (!d.count) { b.textContent = 'DevTools 탭 없음(주입 대기)'; b.className = 'badge'; return; }
-  b.textContent = d.allUnlocked ? `DevTools 해제됨 (${d.count})` : `DevTools 차단됨 (${d.count}) — 클릭하여 복구`;
+  if (!d.count) { b.textContent = '개발자모드 활성화'; b.className = 'badge'; return; }
+  b.textContent = d.allUnlocked ? 'DevTools 해제됨' : `DevTools 차단됨 (${d.count}) — 클릭하여 복구`;
   b.className = 'badge ' + (d.allUnlocked ? 'ok' : 'bad');
 }
 async function lockFix() {
@@ -443,7 +463,7 @@ setInterval(() => {
 /* ---------- 시작 ---------- */
 $('zizum').onchange = loadThemes;
 $('theme').onchange = onTheme;
-$('pname').onchange = $('hp').onchange = saveBuyer;
+$('pname').onchange = $('hp').onchange = $('dep').onchange = saveBuyer;
 (async () => {
   renderTabs(); copySite();
   connect();
@@ -451,6 +471,7 @@ $('pname').onchange = $('hp').onchange = saveBuyer;
   const b = JSON.parse(localStorage.getItem('ke.buyer') || 'null');
   if (b && b.name) $('pname').value = b.name;
   if (b && b.hp) $('hp').value = b.hp;
+  if (b && b.dep) $('dep').value = b.dep;
   const last = JSON.parse(localStorage.getItem('ke.last.' + S.site) || 'null');
   if (last && last.zizum && document.querySelector(`#zizum option[value="${last.zizum}"]`)) $('zizum').value = last.zizum;
   await loadThemes();
@@ -461,5 +482,3 @@ $('pname').onchange = $('hp').onchange = saveBuyer;
 </script>
 </body>
 </html>
-
-

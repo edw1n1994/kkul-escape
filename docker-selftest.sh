@@ -31,7 +31,7 @@ tp() {
   printf '  \033[31m✘\033[0m %s\033[2m (48초 초과)\033[0m\n' "$1"; FAIL=$((FAIL + 1))
 }
 
-echo "== 키이스케이프 사격대 설치 테스트 ===================================="
+echo "== 예약도우미 설치 테스트 ===================================="
 echo "   date=$DATE  zizum=$ZIZUM theme=$THEME info=$INFO  CDP=$CDP_PORT UI=$PORT"
 
 echo; echo "[A] 런타임/정적"
@@ -60,7 +60,7 @@ t 'GET /api/openinfo (오픈 시각 계산)' "has '$U/api/openinfo?zizum=$ZIZUM&
 t 'openinfo: 지점 오픈 시각 존재' "has '$U/api/openinfo?zizum=$ZIZUM&theme=$THEME&info=$INFO&date=$DATE' '\"openTimeSource\"'"
 t 'lib: 오픈 전 스캔 보정(windowSpan +1일) 탑재' "grep -q 'export function windowSpan' $UI/lib.mjs && grep -q 'windowSpan({' $UI/lib.mjs"
 t 'UI: 오픈 시각 자동 계산 코드 탑재' "curl -s --max-time 8 $U/ | grep -q 'loadOpenInfo'"
-t 'UI: 지금 사격 버튼 제거 / 예약 버튼' "curl -s --max-time 8 $U/ | grep -q '예약</button>' && ! curl -s --max-time 8 $U/ | grep -q '지금 사격'"
+t 'UI: 지금 예약 버튼 제거 / 예약 버튼' "curl -s --max-time 8 $U/ | grep -q '예약</button>' && ! curl -s --max-time 8 $U/ | grep -q '지금 예약'"
 t 'UI: 오픈시각/폴링/인원 입력란 없음 (기본값 고정)' "! grep -qE 'id=\"(openAt|deadline|person)\"' $UI/public/index.html && grep -q 'const DEF = {' $UI/public/index.html"
 t 'UI: 예약자 이름/휴대폰 폼 존재' "grep -q 'id=\"pname\"' $UI/public/index.html && grep -q 'id=\"hp\"' $UI/public/index.html && grep -q 'saveBuyer' $UI/public/index.html"
 t 'UI: 조건 요약 바 없음' "! grep -qE 'id=\"bar\"|updateBar' $UI/public/index.html"
@@ -79,11 +79,13 @@ t 'unlock.mjs 주입(+reload)'  "cd $HERE && node unlock.mjs --quiet --reload '$
 # 패턴에 공백을 허용하지 않으면 영원히 매칭되지 못한다(한때 여기서 오탐이 났다).
 tp '해제 상태(allUnlocked)'     "cd $UI && node unlock-status.mjs $CDP_PORT | grep -qE '\"allUnlocked\": *true'"
 tp '디텍터 더미 장전'           "cd $UI && node unlock-status.mjs $CDP_PORT | grep -qE '\"dummy\": *true'"
-t '모든 탭 우클릭 허용'         "cd $UI && node unlock-status.mjs $CDP_PORT | grep -qE '\"ctxOpen\": *true'"
+# '탭이 하나도 없으면' ctxOpen 이 한 줄도 안 찍혀 grep 은 실패한다. 이 도구의 계약은 종료코드다
+# (0 = 전부 해제됨 또는 keyescape 탭 없음 / 2 = 일부 차단) — 공유 CDP 환경에서 탭이 사라지는 flake 를 막는다.
+t '모든 탭 우클릭 허용'         "cd $UI && node unlock-status.mjs $CDP_PORT >/dev/null"
 t '검은화면(wiped) 없음'        "! (cd $UI && node unlock-status.mjs $CDP_PORT | grep -qE '\"wiped\": *true')"
 if [ -n "${NEWID:-}" ]; then curl -s --max-time 5 "$CDP/json/close/$NEWID" >/dev/null 2>&1; fi
 
-echo; echo "[E] 사격 엔진 (dry = 조회만, 제출 없음)"
+echo; echo "[E] 예약 엔진 (dry = 조회만, 제출 없음)"
 t 'runner.mjs --dry 슬롯 조회' "cd $UI && node runner.mjs --zizum $ZIZUM --theme $THEME --info $INFO --date $DATE --dry"
 t 'runner --dry + 우선순위 상태 라벨' "cd $UI && node runner.mjs --zizum $ZIZUM --theme $THEME --info $INFO --date $DATE --times '09:15,23:00' --dry | grep -q '우선순위 09:15='"
 
@@ -184,7 +186,30 @@ t '차단 화면 픽스처가 있다'                         "test -f $UI/tests
 ts 'RUNNER 감시 전용 실행 (디버거 없이 HIT/MISS 까지)' \
   "cd $UI && timeout 60 node runner.mjs --zizum $ZIZUM --theme $THEME --info $INFO --date $DATE --times '10:45' --deadline 6 --watch-only --no-open | grep -qE '\\[WATCH\\]|\\[MISS\\]'"
 
-echo
+echo; echo "[J] 단편선(dpsnnn) — 아임웹 예약 · 로그인 필수 · 무통장입금"
+t 'dps.mjs 가 있고 문법 통과'                    "test -f $UI/dps.mjs && node --check $UI/dps.mjs"
+t 'sites.mjs 에 단편선이 등록되어 있다'          "grep -q \"key: 'dps'\" $UI/sites.mjs"
+t 'façade(apiTimes) 가 dps 로 위임한다'          "grep -q \"k === 'dps'\" $UI/sites.mjs"
+t '러너에 단편선 분기가 있다'                    "grep -q '3-DPS' $UI/runner.mjs"
+t '로그아웃 상태에서는 클릭하지 않는다(게이트)'  "grep -q '로그인해야 예약할 수 있습니다' $UI/runner.mjs && grep -q '로그아웃 상태' $UI/dps.mjs"
+t '결제화면의 최종 결제 버튼은 누르지 않는다'    "grep -q '최종 결제' $UI/dps.mjs && ! grep -q '결제하기' $UI/dps.mjs"
+t '이름/연락처/입금자명 + 무통장입금을 채운다'   "grep -q deposit $UI/dps.mjs && grep -q 무통장입금 $UI/dps.mjs"
+t '서버에 /api/login 라우트가 있다'              "grep -q '/api/login' $UI/server.mjs"
+t 'UI 상단에 로그인 배지가 있다'                 "grep -q 'id=\"bLogin\"' $UI/public/index.html"
+t 'UI 에 입금자명 입력이 있다'                   "grep -q 'id=\"dep\"' $UI/public/index.html"
+t '로그에는 개인 값을 마스킹해서 남긴다'         "grep -q maskName $UI/lib.mjs && grep -q maskHp $UI/runner.mjs"
+t '단편선 테스트/픽스처가 저장소에 있다'         "test -f $UI/tests/dps-test.mjs && test -f $UI/tests/fixture-dps-calendar.html && test -f $UI/tests/fixture-dps-payment.html && test -f $UI/tests/fixture-dps-slot.html"
+t '단편선 테스트 문법 통과'                      "node --check $UI/tests/dps-test.mjs"
+t '달력 파서: 완료일은 닫힘, 가(예약가능) 는 열림 (오프라인 픽스처)' \
+  "cd $UI && node -e \"import('./dps.mjs').then(m=>{const f=require('fs').readFileSync('tests/fixture-dps-calendar.html','utf8');const a=m.parseDpsDay(f,'2026-09-10'),b=m.parseDpsDay(f,'2026-09-15'),c=m.parseDpsDay(f,'2026-09-16');if(a.total>0&&a.open===0&&b.open===b.total&&c.notOpen)process.exit(0);process.exit(1);})\""
+t '로그인 판정: guest 마커 우선 (로그아웃 링크는 함정)' \
+  "cd $UI && node -e \"import('./dps.mjs').then(m=>process.exit(m.parseDpsLogin({guest:true,memberBlock:true}).loggedIn===false?0:1))\""
+t '결제화면 확정 필드가 입력기에 박혀 있다 (orderer_name/orderer_call/depositor_name)' \
+  "grep -q orderer_name $UI/dps.mjs && grep -q orderer_call $UI/dps.mjs && grep -q depositor_name $UI/dps.mjs"
+t '결제수단(pay_type)·입금계좌(cash_idx) 를 인지한다' "grep -q pay_type $UI/dps.mjs && grep -q cash_idx $UI/dps.mjs"
+t '요청사항(deliv_memo) 등은 입력 대상에서 제외'    "grep -q deliv_memo $UI/dps.mjs"
+t '로그인 배지는 실명/이메일을 마스킹한다'         "cd $UI && node -e \"import('./dps.mjs').then(m=>{const x=m.parseDpsLogin({guest:false,memberBlock:true,member:'테스트유저 t@x.com'}).msg;process.exit(!/테스트유저|t@x/.test(x)?0:1)})\""
+
 echo "======================================================================"
 printf ' 통과 \033[32m%s\033[0m   실패 \033[31m%s\033[0m   건넘 \033[33m%s\033[0m\n' "$PASS" "$FAIL" "$SKIP"
 [ "$FAIL" = 0 ] || exit 1

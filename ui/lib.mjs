@@ -82,7 +82,7 @@ export async function keTab(port, url = 'https://www.keyescape.com/reservation1.
   if (!list) return { ok: false, msg: `CDP(:${port}) 응답 없음 — ../unlock.sh 실행 필요` };
   let tab = list.find((t) => t.type === 'page' && /keyescape/.test(t.url));
   if (!tab) {
-    if (!create) return { ok: false, msg: 'keyescape 탭 없음 (사격을 실행하면 열립니다)' };
+    if (!create) return { ok: false, msg: 'keyescape 탭 없음 (예약을 실행하면 열립니다)' };
     const n = await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' })
       .then((r) => r.json()).catch(() => null);
     if (!n?.webSocketDebuggerUrl) return { ok: false, msg: 'keyescape 탭 개설 실패' };
@@ -162,6 +162,10 @@ export function personal(key, fromArg) {
   const arg = typeof fromArg === 'string' ? fromArg : '';
   return String(arg || process.env[key] || localEnv()[key] || '').trim();
 }
+
+/** 로그/화면에 개인 값을 그대로 남기지 않는다 (이름은 첫 글자만, 연락처는 뒤 4자리만) */
+export const maskName = (s) => { const v = String(s || '').trim(); return v ? v[0] + '*'.repeat(Math.max(1, v.length - 1)) : '-'; };
+export const maskHp = (s) => { const d = String(s || '').replace(/[^0-9]/g, ''); return d.length >= 4 ? `${d.slice(0, 3)}-****-${d.slice(-4)}` : d ? '***' : '-'; };
 
 /** reservation2 열리면 문서 파싱과 동시에 정보/약관을 채우는 주입 코드 */
 export function filler(WANT, AGREES) {
@@ -340,7 +344,7 @@ export const LEAD_DAYS_FALLBACK = 6;   // 실측: 오늘 포함 7일 창 (오늘
 /**
  * 창 크기(D-n) 를 확정하는 곳. 오픈 창 스캔이 그 지점의 오픈 시각 '이전에' 이뤄졌으면
  * 창 끝이 하루 덜 잡혀 있다 (실측: 9/8 10:28 스캔 → 창 끝 9/13(+5), 그러나 실제 창은 +6 → 9/14 는 오늘 10:30 오픈).
- * 그 상태에서 leadDays 를 그대로 쓰면 "9/14 은 9/9 에 열린다" 가 되어 사격이 하루 밀린다.
+ * 그 상태에서 leadDays 를 그대로 쓰면 "9/14 은 9/9 에 열린다" 가 되어 예약이 하루 밀린다.
  */
 export function windowSpan({ leadDays, openTime, scanAt, today }) {
   if (leadDays == null) return { span: LEAD_DAYS_FALLBACK, preOpenScan: false, source: `내장 기본 ${LEAD_DAYS_FALLBACK}일` };

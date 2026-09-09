@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 키이스케이프 예약 사격대 UI 서버 (의존성 없음)
+ * 예약도우미 UI 서버 (의존성 없음)
  *
  *   node server.mjs            → http://127.0.0.1:8899
  *   PORT=9000 CDP_PORT=9333 node server.mjs
@@ -22,16 +22,17 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { BRANCHES, getThemes, getTimes, getCalendar, cdpList, cdp, keTab, STEP2_READ, openInfo, noteWindow, personal } from './lib.mjs';
-import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, siteTab, ZW_READ } from './sites.mjs';
+import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS } from './sites.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.PORT || 8899);
+const PORT = Number(process.env.PORT ?? 8899);
 const CDP_PORT = Number(process.env.CDP_PORT || 9222);
 const MAXRUN_LOG = 800;
 
 /* ------- 실행은 동시 1개 (같은 브라우저 탭을 쓰기 때문에 병렬 금지) ------- */
 const run = { child: null, startedAt: 0, lines: [], exit: null, args: null, exitCode: null };
 const sse = new Set();
+const helpers = new Set();
 
 const broadcast = (obj) => {
   const payload = `data: ${JSON.stringify(obj)}\n\n`;
@@ -68,10 +69,13 @@ function startRun(body) {
   const php = personal('KEYESCAPE_HP', body.hp);
   if (pname) args.push('--name', pname);
   if (php) args.push('--hp', php);
+  const dep = personal('KEYESCAPE_DEP', body.dep);   // 단편선 결제화면의 입금자명 (예약자와 동일해야 하는 값)
+  if (dep) args.push('--dep', dep);
   if (body.times) args.push('--times', String(body.times));
   if (body.openAt) args.push('--open-at', new Date(String(body.openAt)).toISOString());
   if (body.person) args.push('--person', String(body.person));
   if (body.autoSubmit) args.push('--auto-submit');   // 캡차 통과 후 '예약하기' 자동 클릭 (기본 off)
+  if (body.humanWait) args.push('--human-wait', String(body.humanWait));   // 사람 클릭 대기 창(초)
   if (body.watchOnly) args.push('--watch-only');     // 디버거 미연결 감시 전용 (차단과 무관하게 동작)
   if (body.dry) args.push('--dry');
 
@@ -108,10 +112,13 @@ const nap = (ms) => new Promise((x) => setTimeout(x, ms));
 function runNode(script, args = [], cwd = HERE, ms = 30000, env = {}) {
   return new Promise((res) => {
     const c = spawn(process.execPath, [path.isAbsolute(script) ? script : path.join(cwd, script), ...args], { cwd, env: { ...process.env, ...env } });
+    helpers.add(c);
+    c.once('close', () => helpers.delete(c));
     let out = '';
     c.stdout.on('data', (d) => (out += d));
     c.stderr.on('data', (d) => (out += d));
     const t = setTimeout(() => c.kill('SIGKILL'), ms);
+    c.once('error', e => { clearTimeout(t); res({ code: 1, out: e.message }); });
     c.on('exit', (code) => { clearTimeout(t); res({ code, out }); });
   });
 }
@@ -139,7 +146,11 @@ const server = http.createServer(async (req, res) => {
       const cal = site.key === 'keyescape' ? await getCalendar(Number(a.info) || 34).catch(() => null) : null;
       return json(res, 200, {
         site: site.key, siteLabel: site.label, captcha: site.captcha, siteNote: site.note,
-        sites: Object.values(SITES).map((s) => ({ key: s.key, label: s.label, captcha: s.captcha })),
+        deposit: !!site.deposit, loginRequired: site.login === 'required',
+        sites: Object.values(SITES).map((s) => ({
+          key: s.key, label: s.label, captcha: s.captcha,
+          deposit: !!s.deposit, login: s.login === 'required' ? 'required' : 'none',
+        })),
         cdp: list ? 'OK' : 'DOWN', cdp_port: Number(a.cdp) || CDP_PORT,
         tabs: list ? list.filter((t) => t.type === 'page').map((t) => t.url.slice(0, 100)) : [],
         serverToday: await apiToday(site.key, a.info),
@@ -149,9 +160,9 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (p === '/api/themes') {
-      if (siteOf(a.site).key === 'zeroworld') {
-        const r = await zwThemes(Number(a.zizum));
-        return json(res, 200, { ok: r.ok, themes: r.themes, msg: r.msg });
+      if (siteOf(a.site).key !== 'keyescape') {   // 제로월드/단편선은 façade 가 사이트 어댑터로 위임한다
+        const r = await apiThemes(a.site, Number(a.zizum));
+        return json(res, 200, { ok: r.ok, themes: r.themes || [], msg: r.msg || '' });
       }
       const d = await getThemes(Number(a.zizum));
       if (!d.status) return json(res, 200, { ok: false, msg: d.msg || '조회 실패', themes: [] });
@@ -184,6 +195,22 @@ const server = http.createServer(async (req, res) => {
       const today = await apiToday(site, a.info);
       const startUTC = Date.parse(today + 'T00:00:00Z');
       const out = [];
+      if (site === 'dps') {   // 월간 달력 한 장에 그 달 슬롯 전부가 있다 → 날짜마다 104KB 를 받지 않는다
+        const byMonth = {};
+        for (const mo of [...new Set(Array.from({ length: days }, (_, i) => new Date(startUTC + i * 86400000).toISOString().slice(0, 7)))]) {
+          byMonth[mo] = await dpsMonth(mo).catch(() => '');
+        }
+        for (let i = 0; i < days; i++) {
+          const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
+          const r = parseDpsDay(byMonth[d.slice(0, 7)] || '', d);
+          out.push({
+            date: d, dow: '일월화수목금토'[new Date(d + 'T00:00:00Z').getUTCDay()],
+            open: r.slots.filter((s) => s.open).length, total: r.slots.length,
+            msg: r.msg || (r.missing ? '달력에 없음' : ''),
+          });
+        }
+        return json(res, 200, { ok: true, site, serverToday: today, days: out });
+      }
       for (let i = 0; i < days; i++) {
         const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
         const r = await apiTimes(site, Number(a.zizum), Number(a.theme), d);
@@ -210,6 +237,16 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { ok: true, site: site.key, ...st });
       } catch (e) { return json(res, 200, { ok: false, msg: String(e.message) }); }
       finally { c.ws.close(); }
+    }
+    // 로그인 배지: 단편선은 '예약하기' 가 SITE_MEMBER.openLogin 으로 감싸져 있어 로그인이 곧 예약 가능 여부다.
+    // 키이스케이프/제로월드는 비회원 예약이라 판단하지 않는다 (필요 없음).
+    if (p === '/api/login') {
+      const site = siteOf(a.site);
+      if (site.login !== 'required') {
+        return json(res, 200, { ok: true, loggedIn: null, required: false, site: site.key, msg: `${site.label} 은 로그인 없이 예약할 수 있습니다`, source: '사이트 정책' });
+      }
+      const r = await dpsLogin(Number(a.cdp) || CDP_PORT);
+      return json(res, 200, { ...r, required: true, site: site.key });
     }
     if (p === '/api/log') return json(res, 200, { running: !!run.child, exit: run.exit, lines: run.lines });
     if (p === '/api/unlock') {
@@ -256,6 +293,24 @@ const server = http.createServer(async (req, res) => {
 // BIND: 기본 127.0.0.1 (노트북 로컬 전용이 원칙). 컨테이너 안에서 포트맵을 쓰려면 BIND=0.0.0.0
 const BIND = process.env.BIND || '127.0.0.1';
 server.listen(PORT, BIND, () => {
-  console.log(`키이스케이프/제로월드 사격대 UI  →  http://${BIND === '0.0.0.0' ? '127.0.0.1' : BIND}:${PORT}/   (CDP :${CDP_PORT})`);
+  process.send?.({ type: 'ready', port: server.address().port });
+  console.log(`예약도우미 UI  →  http://${BIND === '0.0.0.0' ? '127.0.0.1' : BIND}:${PORT}/   (CDP :${CDP_PORT})`);
 });
 
+// Desktop owns only this server and its children, never the booking browser.
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  run.child?.kill('SIGTERM');
+  for (const child of helpers) child.kill('SIGTERM');
+  for (const response of sse) response.end();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 2000).unref();
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+if (process.send) {
+  process.on('message', message => { if (message?.type === 'shutdown') shutdown(); });
+  process.on('disconnect', shutdown);
+}

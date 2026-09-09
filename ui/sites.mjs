@@ -6,10 +6,14 @@
  *                 reservation1.php --NEXT(POST)--> reservation2.php (이름/연락처3조각/약관2/reCAPTCHA)
  *   제로월드      POST /core/res/rev.make.sel.php (HTML 조각, act=theme_list/theme_time_list/...)
  *                 home.php?go=rev.make 한 페이지에서 작성 → /core/res/rev.act.php (이름/연락처1줄/인원/이미지captcha)
+ *   단편선(dps)   아임웹 booking 위젯 — POST /booking/html_list.cm(월간 달력 HTML) + get_prod_list.cm(슬롯 JSON)
+ *                 reserve_g?idx=…&day=… 슬롯 페이지 → 로그인 필수 '예약하기'(add_order.cm) → /shop_payment/
+ *                 (이름/연락처/입금자명 + 결제수단 무통장입금). 디테일은 ./dps.mjs 주석에 실측 그대로 적어두었다.
  *
  * 화면이 다른 만큼 "지점/테마/슬롯/오픈시각" 을 사이트별 어댑터로 감춘다.
  */
 import { getTimes as keGetTimes, getCalendar as keGetCalendar, openInfo as keOpenInfo, cdpList, BRANCHES, LEAD_DAYS_FALLBACK, sleep } from './lib.mjs';
+import { DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth } from './dps.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +37,17 @@ export const SITES = {
     branches: [[4, '강남점'], [5, '홍대점']],
     buyerMode: 'mobile1line', agrees: [], captcha: '이미지 코드',
     needsInfo: false, note: '한 페이지에서 작성 → 이미지 코드 입력 후 예약하기 (제출은 rev.act.php, 대상 iframe ifr_ok)',
+  },
+  dps: {
+    key: 'dps', label: DPS.label, base: DPS.base,
+    step1: () => `${DPS.base}${DPS.page}`,
+    tabMatch: 'dpsnnn',
+    // 아임웹은 지점마다 메뉴가 따로 있다. 강남(/reserve_g) 만 등록 — 성수는 dpsnnn-s.imweb.me 별도 계정.
+    branches: [[DPS.menuCode, '강남점']],          // zizum 자리에 아임웹 menu_code 가 들어간다
+    buyerMode: 'name1line', agrees: [], captcha: '없음',
+    needsInfo: false, login: 'required', deposit: true,
+    openTime: DPS.openTime, leadDays: DPS.leadDays,
+    note: '로그인 필수. 슬롯 페이지(reserve_g?idx=…) 에서 예약하기 → 결제화면에서 이름/연락처/입금자명 + 무통장입금. 최종 결제 진행은 사람이 클릭',
   },
 };
 export const siteOf = (k) => SITES[String(k || 'keyescape').toLowerCase()] || SITES.keyescape;
@@ -233,20 +248,42 @@ export async function zwBranches(force = false) {
 
 /* ===================== 라우터가 쓰는 공통 façade ===================== */
 export async function apiTimes(site, zizum, theme, date) {
-  return siteOf(site).key === 'zeroworld' ? await zwTimes(zizum, theme, date) : await keGetTimes(zizum, theme, date);
+  const k = siteOf(site).key;
+  if (k === 'zeroworld') return await zwTimes(zizum, theme, date);
+  if (k === 'dps') return await dpsTimes(date);                 // 달력 한 장에 그 달 전체 슬롯이 있다
+  return await keGetTimes(zizum, theme, date);
 }
 export async function apiOpenInfo(site, { zizum, theme, info, date }) {
-  return siteOf(site).key === 'zeroworld' ? await zwOpenInfo({ zizum, theme, date }) : await keOpenInfo({ zizum, theme, info, date });
+  const k = siteOf(site).key;
+  if (k === 'zeroworld') return await zwOpenInfo({ zizum, theme, date });
+  if (k === 'dps') return await dpsOpenInfo({ date });
+  return await keOpenInfo({ zizum, theme, info, date });
 }
 export async function apiBranches(site) {
-  return siteOf(site).key === 'zeroworld' ? await zwBranches() : SITES.keyescape.branches;
+  const k = siteOf(site).key;
+  if (k === 'zeroworld') return await zwBranches();
+  if (k === 'dps') return SITES.dps.branches;
+  return SITES.keyescape.branches;
+}
+/** 테마(=슬롯 상품) 목록: 키이스케이프/제로월드는 지점별, 단편선은 강남 이야기×시간대 18종 */
+export async function apiThemes(site, zizum) {
+  const k = siteOf(site).key;
+  if (k === 'zeroworld') return await zwThemes(zizum);
+  if (k === 'dps') {
+    const themes = await dpsProducts().catch(() => []);
+    return { ok: themes.length > 0, themes, msg: themes.length ? '' : 'get_prod_list.cm 이 빈 목록을 주었습니다' };
+  }
+  return null;   // 키이스케이프는 서버 응답 조합이 따로 필요해 server.mjs 에서 처리한다
 }
 export async function apiToday(site, info) {
-  if (siteOf(site).key === 'zeroworld') return zwDate(0);
+  const k = siteOf(site).key;
+  if (k === 'dps') return dpsToday();
+  if (k === 'zeroworld') return zwDate(0);
   const cal = await keGetCalendar(Number(info) || 34).catch(() => null);
   return cal?.calendarData?.today || zwDate(0);
 }
-export { LEAD_DAYS_FALLBACK };
+export { LEAD_DAYS_FALLBACK, DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth };
+export { dpsFiller, dpsBook, dpsSlotRead, dpsOrderRead, dpsLoginRead } from './dps.mjs';
 
 /* ===================== 브라우저 측 (CDP 로 문자열화해 주입) ===================== */
 /** 사이트 탭을 찾거나 연다 (제로월드는 zizum 이 url 에 들어간다) */
@@ -257,7 +294,7 @@ export async function siteTab(port, site, zizum, create = true) {
   if (!list) return { ok: false, msg: `CDP(:${port}) 응답 없음 — ../unlock.sh 실행 필요` };
   let tab = list.find((t) => t.type === 'page' && t.url.includes(s.tabMatch));
   if (!tab) {
-    if (!create) return { ok: false, msg: `${s.label} 탭 없음 (사격을 실행하면 열립니다)` };
+    if (!create) return { ok: false, msg: `${s.label} 탭 없음 (예약을 실행하면 열립니다)` };
     const n = await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' })
       .then((r) => r.json()).catch(() => null);
     if (!n?.webSocketDebuggerUrl) return { ok: false, msg: `${s.label} 탭 개설 실패` };

@@ -1,6 +1,6 @@
-# 키이스케이프 / 제로월드 예약 사격대 (UI)
+# 키이스케이프 / 제로월드 / 단편선 예약 도우미 (UI)
 
-테마 이름 → 날짜 → 시간대를 화면에서 골라서 **오픈 시각에 자동 사격**하는 로컬 웹 UI.
+테마 이름 → 날짜 → 시간대를 화면에서 골라서 **오픈 시각에 자동 예약**하는 로컬 웹 UI.
 `../reserve-fast.mjs` 의 초고속 경로를 그대로 엔진으로 쓴다. 화면 상단 탭으로 **키이스케이프 / 제로월드**를 바꾼다.
 
 **가장 단순한 방법 — 프로젝트 루트의 설치 스크립트 한 개면 끝남** (`npm install` 없음):
@@ -72,6 +72,58 @@ node runner.mjs --site zeroworld --zizum 5 --theme 36 --date 2026-09-23 --times 
 히트하면 러너는 페이지를 옮기지 않고 같은 화면에서 `rev_days / theme_num / theme_time_num` 을 확정하고
 예약하기 버튼을 활성화한 뒤 멈춘다. **이미지 코드 입력과 '예약하기' 클릭은 사용자 동작으로 남긴다** —
 자동 제출·코드 판독은 코드에 존재하지 않으며 `../docker-selftest.sh` 의 `[G]` 가 그것을 정적으로 검사한다.
+
+## 단편선(강남) — 아임웹 예약 · 로그인 필수 · 무통장입금 (`dpsnnn.com/reserve_g`)
+
+실측(2026-09-09) 기준으로 `dps.mjs` 에 전부 적어두었다. 요점만 옮기면:
+
+| 항목 | 값 (실측) |
+| --- | --- |
+| 월간 달력 | `POST /booking/html_list.cm` (`target_month`, `menu_code=m2021111422e8d3a51ef50`) → HTML 약 104KB |
+| 슬롯 목록 | `POST /booking/get_prod_list.cm` (`menu_code`) → JSON `total:[{idx, name:"상자 / 10:00"}]` 18종 |
+| 달력 셀 | `<td class="booking_day pc_day [full_day] [holiday]" data-date="2026-9-16">` (zero-padding 없음) |
+| 슬롯 항목 | `<div class="booking_list …"><a href="reserve_g?idx=25&day=20260910" onclick="return false">` + 뱃지 |
+| 여는 조건 | 뱃지 **가**(`#8EC31F`) 이고 래퍼에 `closed`/`disable` 없고 앵커에 `return false` 없을 때만 (모호하면 닫힘) |
+| 닫힌 표시 | `완` 예약완료(#fa565a) · `대` 입금대기 · 셀 전체 `예약불가` 아직 미오픈 · `예약 종료` 지난 날 |
+| 오픈 규칙 | 공지 원문 "매일 자정에 다음주 해당 요일의 슬롯이 오픈됩니다" → **openAt(D) = (D-7일) 00:00 KST** (실측 창 끝 = 오늘+6) |
+| 예약하기 | `SITE_MEMBER.openLogin(…, function(){SITE_BOOKING.addBooking(false)}, …)` → **로그인 필수** |
+| 주문 생성 | `#booking_f` serialize → `POST /booking/add_order.cm` → `/shop_payment/?order_code=…` |
+| 로그인 마커 | 로그아웃 `.member-info.guest` + "로그인이 필요합니다." / 로그인 `.member-info:not(.guest)` |
+| 자동등록방지 | 없음. 대신 **돈이 나가는 결제**가 뒤에 있다 |
+
+**이 도구가 하는 일**: 달력 폴링 → 목표 슬롯(상품 idx + 시각)이 열리는 순간 슬롯 페이지로 이동 → 로그인 확인 →
+(opt-in `--auto-submit`) `예약하기` 1회 클릭 → 결제화면에서 **이름 / 연락처 / 입금자명** 입력 + **무통장입금** 선택.
+**하지 않는 일**: 결제화면의 `결제하기`(최종 결제 진행) 클릭, 로그인 대리, 이미 클릭한 주문의 재시도.
+
+```bash
+cd ui
+node runner.mjs --site dps --zizum m2021111422e8d3a51ef50 \
+  --theme 36 --info 36 --date 2026-09-15 --times "10:20" \
+  --name … --hp 010-0000-0000 --dep 입금자명 --auto-submit --submit-preview   # 먼저 눈으로 확인
+# 확인 후 --submit-preview 를 빼면 실제로 클릭한다 (로그아웃 상태에서는 절대 클릭하지 않는다)
+```
+
+- 입금자명은 사이트 공지가 **예약자명과 동일해야 예약 유지**라고 못 박고 있다. 다르다면 이 도구를 쓰지 말고 직접 입력할 것.
+- 성수(`/reserve_ss`, `dpsnnn-s.imweb.me`) 는 **강남과 계정을 공유하지 않는다** → 이 도구에는 강남만 등록되어 있다.
+- 아임웹은 필드 `name`/`id` 가 사이트 설정마다 달라질 수 있다. 입력기는 ① 알려진 name/id 후보(아래 표의 확정값 포함)
+  ② 라벨 텍스트 정규식 순으로 찾고, 못 찾으면 `누락`으로 보고한다 (추측 입력 금지). `[ORDER]` 로그의 `입력기간` 에 어디에 넣었는지 그대로 찍힌다.
+
+### 결제화면(`/shop_payment/?order_code=…`) 실측 필드 — 2026-09-09 주문으로 확정
+
+| 무엇 | 필드 (확정) | 비고 |
+| --- | --- | --- |
+| 주문자명 | `input[name=orderer_name]` (text) | **라벨 텍스트가 없다** → name 으로만 찾는다. 회원정보로 자동 채워져 있음 |
+| 연락처 | `input[name=orderer_call]` (tel) | 한 줄 입력. 사이트는 채우지 않는다 → 이 도구가 넣는다 |
+| 입금자명 | `input[name=depositor_name]` (text) | `placeholder="입금자명 (미입력시 주문자명)"` — 자동 채워짐, 그럼에도 확인 입력 |
+| 결제수단 | `input[name=pay_type]` radio · 값 `card`(신용카드) / `cash`(**무통장입금**) | 이 도구는 `cash` 를 선택한다 |
+| 입금 계좌 | `select[name=cash_idx]` | 사람이 선택 (계좌 번호는 화면에 이미 노출되는 정보) |
+| 요청사항 | `input[name=deliv_memo]` | **건드리지 않는다** (SKIP 목록) |
+| 약관 | `agree_cancel`, `paymentAllCheck` 외 | **대신 체크하지 않는다** — 사람이 체크해야 결제 진행이 열립니다 |
+| 최종 결제 | 버튼 `결제하기` | **절대 클릭하지 않는다** |
+
+실측 주의: 결제화면은 URL(`?order_code=`)이 먼저 뜨고 **입력란은 그 뒤에 렌더**된다(첫 스냅샷 `inputs=0`).
+러너는 필드가 나타난 뒤, 게다가 주입된 입력기가 채움을 끝낸 뒤에 결과를 발표한다.
+`무통장입금` 선택 시 계좌와 함께 **"주문 후 1시간 동안 미입금 시 자동 취소"** 문구가 뜬다 — 실측 안내.
 
 ## 화면
 
@@ -149,7 +201,7 @@ reservation2 에 자동 입력될 값이고 실행할 때마다 브라우저(`lo
    (실측: 메모리컴퍼니 D-6, 홍대점 D-12).
    **주의 — 오픈 시각 전에 스캔하면 창 끝이 하루 덜 보인다.** 지점은 매일 자기 오픈 시각에
    창을 하루 민다. 그래서 메모리컴퍼니(10:30) 의 경우 10:28 스캔의 창 끝은 `오늘+5` 다.
-   이 값을 곧바로 D-n 으로 쓰면 사격이 하루 밀린다 (실수 사례: 9/8 10:28 세팅 → 9/14 의 오픈을
+   이 값을 곧바로 D-n 으로 쓰면 예약이 하루 밀린다 (실수 사례: 9/8 10:28 세팅 → 9/14 의 오픈을
    9/9 10:30 으로 계산 — 실제로는 그 날 10:30 에 열렸다). `windowSpan()` 이 **스캔이 그 날의
    오픈 시각 이전이었으면 +1일** 보정한다 → 오픈 전/후 어느 때 스캔해도 창 크기는 6일로 일정하다.
 
@@ -177,6 +229,9 @@ curl -X POST localhost:8899/api/run -d '{"zizum":18,"theme":57,"info":34,
 curl localhost:8899/api/log                                 # 최근 로그
 curl -X POST localhost:8899/api/stop                        # 중단
 curl localhost:8899/api/step2                               # reservation2 읽기 전용 확인
+curl 'localhost:8899/api/login?site=dps'                    # 단편선 로그인 상태 (상단 배지의 근거)
+curl 'localhost:8899/api/themes?site=dps'                   # 단편선 슬롯 18종 (이야기 × 시간대, theme=상품 idx)
+curl 'localhost:8899/api/slots?site=dps&date=2026-09-15'    # 단편선 그 날 슬롯 (open/뱃지/슬롯 URL)
 ```
 
 CLI 로 돌릴 때:
@@ -215,6 +270,9 @@ node runner.mjs … --submit-preview                # 클릭 대상만 보고하
 | `[UNLOCK]` | 디버거 차단 무력화(`ext/inject.js`) 를 걸고 확인한 결과 (디텍터 더미 / 우클릭 / F12) |
 | `[BLOCK]` | 해제 재적용 + 1회 재요청 후에도 차단 화면일 때만 → 중단(`exit 7`) + 알림 + 스크린샷 |
 | `[WATCH]` | 감시 전용(`--watch-only`)으로 히트 — 이후 선택/캡차/결제는 사람 |
+| `[DPS]` / `[SLOT]` | 단편선 슬롯 페이지 이동 / 그 페이지의 예약좌표·상품명·금액·로그인 상태 |
+| `[LOGIN]` | 단편선 로그인 상태 (`/api/login` 배지와 같은 판정 근거) |
+| `[ORDER]` | 결제화면에서 무엇을 어디에 넣었고 결제수단을 뭘로 고랐는지 (최종 결제는 사람) |
 | `[HANDOFF]` | 클릭 순서(지점→테마→날짜→시간대) 안내 + 소리 알림 + 기본 브라우저에 예약 페이지 열기 (클릭/입력은 대신 하지 않음) |
 
 ## 실측 (이 폴더에서 검증한 것)
@@ -276,7 +334,7 @@ curl -X POST localhost:8899/api/unlock           # 재주입(복구) 후 재검�
 curl -X POST 'localhost:8899/api/unlock?cdp=9333'  # 다른 인스턴스 대상
 ```
 
-> **참고**: 예약 실행(사격) 은 이 배지와 무관하게 동작한다 — `ui/runner.mjs` 가 CDP 에 붙을 때
+> **참고**: 예약 실행(예약) 은 이 배지와 무관하게 동작한다 — `ui/runner.mjs` 가 CDP 에 붙을 때
 > `lib.applyUnlock()` 으로 `ext/inject.js` 를 **직접** 등록하기 때문이다. 위 배지/`unlock.mjs` 는
 > **사람이 F12 · 우클릭-검사로 현장 조사**를 할 때 필요하다. 단 DevTools 를 직접 열기 전에
 > 해제를 먼저 해야 한다 — 디텍터가 먼저 감지하면 body 가 검은 화면으로 바뀌어 그 문서는 복구가 안 된다.

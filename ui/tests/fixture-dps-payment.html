@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>단편선 결제화면 목업</title></head>
+<body>
+<!--
+  /shop_payment/?order_code=… 의 실측 구조를 복제했다 (2026-09-09 주문 o2026… 에서 관측).
+  핵심: 세 필드 모두 **label 텍스트가 비어 있고** name 으로만 구분된다.
+    주문자명 orderer_name(text) · 연락처 orderer_call(tel) · 입금자명 depositor_name(text)
+    결제수단 pay_type(radio: card=신용카드 / cash=무통장입금) · 입금은행 cash_idx(select)
+    요청사항 deliv_memo · 약관 agree_cancel / paymentAllCheck · 버튼 '결제하기'
+  개인정보는 없다 — 입력값은 테스트가 넣는다.
+-->
+<div class="profile-area"><div class="member-info full-width">테스트유저</div></div>
+
+<h3>예약자 정보</h3>
+<form id="order_f" onsubmit="return false">
+  <table>
+    <!-- 실측 그대로: label for 가 없고 셀 안 텍스트도 비어 있다 → name/id 로만 찾아야 통과한다 -->
+    <tr><td class="title"></td><td><input type="text" name="orderer_name" id="orderer_name"></td></tr>
+    <tr><td class="title"></td><td><input type="tel" name="orderer_call" id="orderer_call"></td></tr>
+    <tr><td class="title"></td><td><input type="text" name="deliv_memo" id="deliv_memo" placeholder="요청사항을 입력해 주세요"></td></tr>
+    <tr><td><label for="agree_cancel">취소·환불 규정에 동의합니다.</label></td>
+      <td><input type="checkbox" name="agree_cancel" id="agree_cancel" value="ok"></td></tr>
+  </table>
+
+  <h4>결제수단</h4>
+  <ul>
+    <li><label><input type="radio" name="pay_type" value="card" checked> 신용카드</label></li>
+    <li><label><input type="radio" name="pay_type" value="cash"> 무통장입금</label></li>
+  </ul>
+  <select name="cash_idx" id="cash_idx">
+    <option value="0">입금계좌를 선택해 주세요</option>
+    <option value="1">우리은행 000-000-000000 (단편선)</option>
+  </select>
+  <div><label for="depositor_name"></label><input type="text" name="depositor_name" id="depositor_name" placeholder="입금자명 (미입력시 주문자명)"></div>
+
+  <p class="pay_amount">결제예상금액 56,000원</p>
+  <input type="hidden" name="order_code" value="o2026000000000000">
+  <input type="hidden" name="pg_type" value="tosspa">
+  <a href="javascript:;" class="btn pay" onclick="window.__PAY_COUNT=(window.__PAY_COUNT||0)+1">결제하기</a>
+</form>
+
+<script>
+  // 제출 카운터: 입력기가 결제/주문 버튼을 누르면 안 되므로 이 값으로 검증한다.
+  document.getElementById('order_f').addEventListener('submit', function () { window.__PAY_COUNT = (window.__PAY_COUNT || 0) + 1; return false; });
+</script>
+</body>
+</html>
+
+
+<script>
+  // 제출 카운터: 입력기가 결제/주문 버튼을 누르면 안 되므로 이 값으로 검증한다.
+  document.getElementById('order_f').addEventListener('submit', function () { window.__PAY_COUNT = (window.__PAY_COUNT || 0) + 1; return false; });
+</script>
+</body>
+</html>

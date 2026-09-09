@@ -9,7 +9,7 @@
  *        [--auto-submit]  캡차 통과 감지 후 '예약하기' 1회 클릭 (기본 off / reCAPTCHA 는 사람이 클릭)
  *        [--submit-preview]  제출 대상만 보고하고 아무것도 클릭하지 않음
  *
- *   --site zeroworld  로 같은 사격을 제로월드(zeroworldkorea.com) 에도 쓴다.
+ *   --site zeroworld  로 같은 예약을 제로월드(zeroworldkorea.com) 에도 쓴다.
  *     제로월드는 테마번호가 info 를 겸하고 예약 페이지가 한 장이라 reservation2 흐름이 없다.
  *     → 히트 시 같은 페이지에서 날짜/테마/시간을 확정하고 이미지 캡차만 사용자에게 남긴다.
  *
@@ -28,9 +28,11 @@
  * stdout 은 UI 가 파싱하기 쉬운 "키=값" / 평문 로그 라인. 진행상황은 접두어 [RUN]/[HIT]/[STEP2] 등.
  */
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
-import { rpc, getTimes, cdp, keTab, filler, postNav, sleep, STEP2_READ, step2Submit, BLOCK_MARK, BRANCHES, applyUnlock, personal } from './lib.mjs';
+import { rpc, getTimes, cdp, keTab, filler, postNav, sleep, STEP2_READ, step2Submit, BLOCK_MARK, BRANCHES, applyUnlock, personal, maskName, maskHp } from './lib.mjs';
 import { siteOf, apiTimes, siteTab, zwFiller, zwPick, ZW_READ } from './sites.mjs';
+import { dpsUrl, dpsFiller, dpsBook, dpsSlotRead, dpsOrderRead, dpsLogin } from './sites.mjs';
 
 const A = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -41,7 +43,7 @@ const SITE = siteOf(A.site);   // keyescape(기본) | zeroworld
 const Z = String(A.zizum || ''), T = String(A.theme || ''), INFO = String(A.info || A.theme || '');
 const D = String(A.date || ''), TNAME = String(A.tname || '');
 const TIMES = String(A.times || '').split(',').map((s) => s.trim()).filter(Boolean);
-// 오픈 시각 사격이 기본 사용법이다. --open-at 이 없으면 "지금 발사" 가 되므로 경고하고 지나간다.
+// 오픈 시각 예약이 기본 사용법이다. --open-at 이 없으면 "지금 발사" 가 되므로 경고하고 지나간다.
 const OPEN_AT = A['open-at'] ? new Date(String(A['open-at'])).getTime() : Date.now();
 if (!A['open-at'] && !A.dry) console.log('[WARN] --open-at 없음 → 즉시 발사합니다 (UI 는 항상 openInfo 로 계산한 오픈 시각을 넘깁니다)');
 const DEADLINE_S = Number(A.deadline || 60);
@@ -51,7 +53,15 @@ const POLL_OPEN = Number(A['poll-open'] || 45);
 const BUYER = { name: personal('KEYESCAPE_NAME', A.name) };
 const hp = personal('KEYESCAPE_HP', A.hp).replace(/[^0-9]/g, '');
 const HPD = hp.length >= 10 ? `${hp.slice(0, 3)}-${hp.slice(3, 7)}-${hp.slice(7)}` : '010-0000-0000';
-if (SITE.buyerMode === 'mobile1line') BUYER.mobile = HPD;      // 제로월드: 연락처 한 줄(13자 검증)
+if (SITE.key === 'dps') {                       // 단편선: 결제화면에서 이름 / 연락처 1줄 / 입금자명을 채운다
+  BUYER.hp = HPD;
+  let dp = personal('KEYESCAPE_DEP', A.dep);    // 입금자명도 개인 값 — 저장소에 없다 (인자→env→ui/local.env)
+  if (!dp && BUYER.name) {
+    dp = BUYER.name;   // 사이트 기본값이 '미입력시 주문자명' 이고 공지도 입금자명=예약자명 이라 동일하게 둔다 (조용히 하지 않고 알린다)
+    console.log('[WARN] 입금자명(--dep / KEYESCAPE_DEP) 미지정 → 예약자명과 동일하게 채웁니다 (사이트 공지: 입금자명이 다르면 예약이 취소될 수 있음)');
+  }
+  if (dp) BUYER.dep = dp;
+} else if (SITE.buyerMode === 'mobile1line') BUYER.mobile = HPD;      // 제로월드: 연락처 한 줄(13자 검증)
 else { BUYER.mobile1 = HPD.slice(0, 3); BUYER.mobile2 = HPD.slice(4, 8); BUYER.mobile3 = HPD.slice(9); }
 const AGREES = String(A.agrees || SITE.agrees.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 const PERSON = A.person ? String(A.person) : null;
@@ -65,8 +75,10 @@ const NO_OPEN = !!A['no-open'];
 const WATCH_POLL = Math.max(Number(A['poll-open'] || 300), 120);   // 감시 전용은 서버에 예의 있게 300ms
 // reCAPTCHA 는 어떤 경우에도 대신 누르지 않는다. --auto-submit 은 '사람이 캡차를 통과한 뒤'
 // '예약하기' 를 1회 눌러주는 선택 기능일 뿐이다 (기본 off — 기존 동작 그대로 유지).
-const AUTO_SUBMIT = !!A['auto-submit'] && SITE.key === 'keyescape' && !WATCH_ONLY;
+const AUTO_SUBMIT = !!A['auto-submit'] && (SITE.key === 'keyescape' || SITE.key === 'dps') && !WATCH_ONLY;
 const SUBMIT_PREVIEW = !!A['submit-preview'];
+// 단편선은 '예약하기' 를 사람이 클릭한 뒤 결제화면이 서버에서 렌더된다. 그 클릭을 기다리는 창(초).
+const HUMAN_WAIT = Math.max(30, Number(A['human-wait'] || (AUTO_SUBMIT ? 60 : 240)));
 
 const t0 = Date.now();
 const el = () => ((Date.now() - t0) / 1000).toFixed(2).padStart(7);
@@ -83,10 +95,16 @@ log(`목표 [${SITE.label}] 지점${Z} 테마${T}${SITE.needsInfo ? `(info ${INF
 let c = null;
 const run = (cmd, args) => new Promise((res) => execFile(cmd, args, (err, so, se) => res(
   err ? { ok: false, why: String((se && se.trim()) || err.message).slice(0, 110) } : { ok: true, why: String(so || '').trim().slice(0, 60) || 'ok' })));
+/** macOS 시스템 알림(소리 포함). 실패해도 흐름을 막지 않는다 */
+async function notify(title, body) {
+  if (process.platform !== 'darwin') return;
+  const r = await run('osascript', ['-e', `display notification "${body}" with title "${title}" sound name "Glass"`]);
+  log(`[ALERT] 시스템 알림: ${r.ok ? '발송 성공' : '실패 — ' + r.why}`);
+}
 /** 사람에게 넘긴다: 클릭 순서 안내 + 시스템 알림(소리) + 기본 브라우저에 예약 페이지 열기. 클릭/입력은 대신 하지 않는다. */
-async function handoff(why) {
-  const url = SITE.step1(Z);
-  const br = (BRANCHES.find((b) => String(b[0]) === String(Z)) || [Z, `지점${Z}`])[1];
+async function handoff(why, urlOverride) {
+  const url = urlOverride || SITE.step1(Z);
+  const br = (SITE.branches.find((b) => String(b[0]) === String(Z)) || [Z, `지점${Z}`])[1];
   const seq = [br, TNAME || `테마${T}`, D, TIMES.join('/')].filter(Boolean).join(' → ');
   log(`[HANDOFF] 클릭 순서(사람): ${seq} → 자동등록방지 → 예약하기   ( ${why} )`);
   log(`[HANDOFF] 링크: ${url}`);
@@ -99,7 +117,7 @@ async function handoff(why) {
   log(`[HANDOFF] 시스템 알림: ${n.ok ? '발송 성공 (소리 포함)' : '실패 — ' + n.why}`);
 }
 if (!DRY && !WATCH_ONLY) {
-  const t = SITE.key === 'zeroworld' ? await siteTab(PORT, SITE.key, Z) : await keTab(PORT);
+  const t = SITE.key === 'keyescape' ? await keTab(PORT) : await siteTab(PORT, SITE.key, Z);
   if (!t.ok) { log('[FAIL] ' + t.msg); process.exit(3); }
   c = cdp(t.tab.webSocketDebuggerUrl);
   try { await c.ready; } catch (e) { log('[FAIL] CDP 세션 실패: ' + e.message); process.exit(3); }
@@ -109,19 +127,25 @@ if (!DRY && !WATCH_ONLY) {
   // 따라서 입력기를 넣기 **전에** 이 저장소의 기존 해제(ext/inject.js) 를 먼저 등록한다
   // (addScriptToEvaluateOnNewDocument 는 등록 순서대로 실행되므로 해제가 사이트 스크립트보다 앞선다).
   if (SITE.key === 'keyescape') await applyUnlock(c, log);
-  const inject = SITE.key === 'zeroworld'
-    ? `(${zwFiller.toString()})(${JSON.stringify(BUYER)})`
-    : `(${filler.toString()})(${JSON.stringify(BUYER)},${JSON.stringify(AGREES)})`;
+  const inject = SITE.key === 'dps'
+    ? `(${dpsFiller.toString()})(${JSON.stringify(BUYER)})`        // 단편선은 결제화면(/shop_payment/) 에서 채운다
+    : SITE.key === 'zeroworld'
+      ? `(${zwFiller.toString()})(${JSON.stringify(BUYER)})`
+      : `(${filler.toString()})(${JSON.stringify(BUYER)},${JSON.stringify(AGREES)})`;
   await c.send('Page.addScriptToEvaluateOnNewDocument', { source: inject });
   // 제로월드는 페이지를 이동하지 않으므로 지금 이 문서에도 바로 한 번 돌린다 (이름/연락처/인원 사전 입력)
   if (SITE.key === 'zeroworld') await c.evaluate(inject).catch((e) => log('[WARN] 사전 입력기 실행 실패: ' + e.message));
-  log(`[READY] ${SITE.label} CDP 탭 연결 / 입력기 주입 (${BUYER.name || '이름없음'} ${HPD} 약관 ${AGREES.length}개)`);
+  log(`[READY] ${SITE.label} CDP 탭 연결 / 입력기 주입 (${maskName(BUYER.name)} ${maskHp(HPD)} 약관 ${AGREES.length}개)`);
   if (!BUYER.name || hp.length < 10) log('[WARN] 예약자 이름/연락처가 비어 있습니다 — --name/--hp 또는 ui/local.env(KEYESCAPE_NAME/KEYESCAPE_HP) 또는 화면 입력으로 채우세요. 빈 값은 폼에 입력되지 않고 자동 제출도 거부됩니다');
 } else if (WATCH_ONLY) {
   log('[READY] 감시 전용 — 디버거를 붙이지 않습니다 (서버 슬롯 조회만 하고, 열리는 순간 사람에게 넘깁니다)');
 }
 
 /* ---------- 2) 슬롯 폴링 (오픈 전 워밍 -> 우선순위 히트) ---------- */
+// 단편선은 이야기(상품 idx)마다 같은 시각이 있을 수 있어 시간대 + 상품 idx 로 찾는다.
+const slotFor = (slots, want) => SITE.key === 'dps'
+  ? slots.find((x) => x.time === want && String(x.num) === String(T))
+  : slots.find((x) => x.time === want);
 if (DRY) {
   const r = await apiTimes(SITE.key, Z, T, D);
   const nowK = new Date(Date.now() + 9 * 3600 * 1000).toISOString();   // KST 벽시계
@@ -130,7 +154,7 @@ if (DRY) {
       : (SITE.key === 'zeroworld' ? '마감(선택불가)' : '미오픈(오픈 대기)'));
   out('[SLOTS]', { ok: r.ok, msg: r.msg || '-', count: r.slots.length });
   for (const s of r.slots) out('  ', { time: s.time, num: s.num, state: stName(s), sale: s.sale || '-' });
-  if (TIMES.length) log('[DRY] 우선순위 ' + TIMES.map((w) => { const s = r.slots.find((x) => x.time === w); return `${w}=${s ? stName(s) : '목록없음'}`; }).join(' / '));
+  if (TIMES.length) log('[DRY] 우선순위 ' + TIMES.map((w) => { const s = slotFor(r.slots, w); return `${w}=${s ? stName(s) : '목록없음'}`; }).join(' / '));
   if (!r.slots.length) log(`[DRY] 슬롯 목록이 아직 없습니다 — 예약 창이 열리면 생깁니다 (msg: ${r.msg || '-'})`);
   if (c) c.ws.close();
   process.exit(0);
@@ -151,12 +175,12 @@ while (!hit && Date.now() < dl) {
   if (r.ok) {
     all = r.slots;
     for (const want of TIMES) {
-      const s = r.slots.find((x) => x.time === want);
+      const s = slotFor(r.slots, want);
       if (s && s.open) { hit = s; break; }
     }
     if (!hit) {
       const line = `노출 ${r.slots.length}개 / 가능 ${r.slots.filter((s) => s.open).length}개 / ` +
-        TIMES.map((w) => { const s = r.slots.find((x) => x.time === w); return `${w}${s ? (s.open ? ':O' : ':N') : ':x'}`; }).join(' ');
+        TIMES.map((w) => { const s = slotFor(r.slots, w); return `${w}${s ? (s.open ? ':O' : ':N') : ':x'}`; }).join(' ');
       if (line !== lastMsg) { lastMsg = line; log(`[POLL] ${n}회 ${line} / 남은 ${((dl - Date.now()) / 1000).toFixed(0)}s`); }
     }
   } else if (r.msg !== lastMsg) { lastMsg = r.msg; log(`[POLL] ${n}회 응답: ${r.msg} (아직 예약 창 밖일 수 있음)`); }
@@ -173,7 +197,109 @@ out('[HIT]', { time: hit.time, themeTimeNum: hit.num, tries: n, open_slots: all.
 /* ---------- 2-W) 감시 전용은 여기서 끝. 디버거를 붙이지 않으니 사이트 차단과 무관하게 동작한다 ---------- */
 if (WATCH_ONLY) {
   out('[WATCH]', { 시간: hit.time, themeTimeNum: hit.num, tries: n, 처리: '사람이 브라우저에서 직접 선택/캡차/결제' });
-  await handoff(`${hit.time} 열림 / 회차번호 ${hit.num}`);
+  await handoff(`${hit.time} 열림 / 회차번호 ${hit.num}`, SITE.key === 'dps' ? (hit.url || dpsUrl(hit.num, D.replace(/-/g, ''))) : undefined);
+  process.exit(0);
+}
+
+/* ---------- 3-DPS) 단편선: 슬롯 페이지로 이동 → (opt-in) '예약하기' → 결제화면 자동 채움 ----------
+ *  최종 결제(계좌이체 진행) 는 사람이 한다. 이 도구는 무통장입금을 선택하고 이름/연락처/입금자명을 채운다. */
+if (SITE.key === 'dps') {
+  const url = hit.url || dpsUrl(hit.num, D.replace(/-/g, ''));
+  log(`[DPS] 슬롯 페이지로 이동: ${url}`);
+  await c.send('Page.navigate', { url }).catch((e) => log('[FAIL] 이동 실패: ' + e.message));
+  let sl = null;
+  for (let i = 0; i < 40; i++) {
+    sl = await c.evaluate(`(${dpsSlotRead.toString()})()`).catch(() => null);
+    // 달력 JS 가 hidden(start_day) 을 채우는 데 시간이 조금 걸린다 → 좌표가 다 채워질 때까지 기다린다
+    if (sl && sl.bookingForm && sl.hidden && sl.hidden.prod_idx && sl.hidden.start_day) break;
+    await sleep(250);
+  }
+  out('[SLOT]', {
+    url: (sl && sl.href) || '-', 상품명: (sl && sl.title) || '-', 금액: (sl && sl.price) || '-',
+    prod_idx: (sl && sl.hidden && sl.hidden.prod_idx) || '-', start_day: (sl && sl.hidden && sl.hidden.start_day) || '-',
+    예약하기: ((sl && sl.buttons) || 0) + '개', 로그인: sl && !sl.guest ? '됨' : '아니오', after_hit_ms: Date.now() - tHit,
+  });
+  const lg = await dpsLogin(PORT).catch(() => null);
+  if (lg) log(`[LOGIN] ${lg.msg}${lg.source ? ' (' + lg.source + ')' : ''}`);
+  if (!lg || lg.loggedIn === false) {
+    log('[ABORT] 단편선은 로그인해야 예약할 수 있습니다 — 브라우저에서 로그인한 뒤 다시 실행하세요 (아무것도 클릭하지 않았습니다)');
+    await shot('need-login');
+    await handoff('로그인 필요', url);
+    c.ws.close(); process.exit(8);
+  }
+  const want = { idx: String(hit.num), day: D };
+  const book = (preview) => c.evaluate(`(${dpsBook.toString()})(${JSON.stringify({ want, preview })})`)
+    .catch((e) => ({ ok: false, problems: ['evaluate 실패: ' + e.message] }));
+  if (SUBMIT_PREVIEW) {
+    const p = await book(true);
+    out('[PREVIEW]', {
+      클릭대상: p.btn || '-', 대상: `${p.prod || '-'} / ${p.day || '-'}`, 금액: p.price || '-',
+      결제수단: p.payHint || '결제화면에서 무통장입금 선택 예정',
+      폼검증: (p.problems || []).length ? '실패' : '통과', 문제: (p.problems || []).join(',') || '없음',
+    });
+    log(`[PREVIEW] ${(p.problems || []).length ? '검증 미통과 — 클릭 대상이 아닙니다' : '지금 상태 그대로면 클릭 가능한 폼입니다'} (아무것도 클릭하지 않았습니다)`);
+    c.ws.close(); process.exit(0);
+  }
+  if (!AUTO_SUBMIT) {
+    log(`[TODO] 브라우저에서 '예약하기' 를 클릭하세요 — 클릭 후 결제화면의 이름/연락처/입금자명과 무통장입금은 자동으로 채워집니다 (최대 ${HUMAN_WAIT}초 대기)`);
+    notify(`${SITE.label} 예약 대기`, `${D} ${hit.time} — 브라우저에서 '예약하기' 를 클릭하면 결제화면을 채웁니다`);
+  } else {
+    const p = await book(true);
+    out('[CHECK]', {
+      버튼: p.btn || '-', 대상: `${p.prod || '-'} / ${p.day || '-'}`, 금액: p.price || '-',
+      폼검증: (p.problems || []).length ? '실패' : '통과', 문제: (p.problems || []).join(',') || '없음',
+    });
+    const r = await book(false);
+    out('[SUBMIT]', { ok: r.ok, 버튼: r.btn || '-', 사유: (r.problems || []).join(',') || '-', after_hit_ms: Date.now() - tHit });
+    if (!r.ok) { log('[ABORT] 예약하기 를 누르지 않았습니다 — 브라우저에서 직접 클릭하세요 (재시도 없음)'); c.ws.close(); process.exit(9); }
+  }
+  // 결제화면은 예약하기 클릭(사람 또는 opt-in 자동) 이후에야 서버가 렌더한다. 사람 클릭을 기다리는 동안
+  // 필드 후보를 계속 밖에 내보낸다 — 아임웹은 name/id 가 사이트 설정마다 달라 이 실측이 확정 근거가 된다.
+  let od = null, fieldsDumped = false, beat = 0;
+  const dUntil = Date.now() + HUMAN_WAIT * 1000;
+  while (Date.now() < dUntil) {
+    const dlg = c.drain('Page.javascriptDialogOpening');
+    if (dlg) {
+      log('[ALERT] 사이트 메시지: ' + String((dlg.params && dlg.params.message) || '').replace(/\s+/g, ' ').slice(0, 120));
+      await c.send('Page.handleJavaScriptDialog', { accept: true }).catch(() => {});
+    }
+    od = await c.evaluate(`(${dpsOrderRead.toString()})()`).catch(() => null);
+    // URL 만 결제화면이고 입력란은 그 뒤 클라이언트 렌더된다(실측: 첫 스냅샷 inputs=0) → 필드가 나타난 뒤에만 확정한다
+    if (od && od.onPayment && (od.inputs || []).length >= 2) break;
+    if (!fieldsDumped && od && (od.inputs || []).length >= 3) {   // 아직 결제화면이 아니어도 보이는 필드를 먼저 기록해 둔다
+      out('[FIELDS]', { where: (od.href || '-').slice(0, 70), inputs: od.inputs.map((i) => `${i.key}[${i.type}](${i.label})`).slice(0, 20) });
+      fieldsDumped = true;
+    }
+    if (!AUTO_SUBMIT && ++beat % 40 === 0) log(`[WAIT] '예약하기' 클릭 대기 중… 남은 ${Math.round((dUntil - Date.now()) / 1000)}초`);
+    await sleep(300);
+  }
+  // 결제화면이 열려도 주입된 입력기가 채움을 끝내기 전에는 결과를 발표하지 않는다 (실측 레이스)
+  for (let i = 0; od && od.onPayment && !od.fillAt && !od.fillErr && i < 100; i++) {
+    await sleep(250);
+    od = await c.evaluate(`(${dpsOrderRead.toString()})()`).catch(() => od);
+  }
+  if (!od || !od.onPayment) {
+    out('[ORDER]', { 상태: `결제화면 미도착 (${HUMAN_WAIT}초)`, url: (od && od.href) || '-', 처리: AUTO_SUBMIT ? '브라우저 확인 필요' : '사람 클릭 대기' });
+    log('[WARN] 결제화면(/shop_payment/) 을 확인하지 못했습니다 — 브라우저에서 상태를 확인하세요 (재시도/재클릭 없음)');
+  } else {
+    out('[ORDER]', {
+      url: od.href, 금액: od.total || '-', 결제수단: od.pay || '-',
+      채운값: Object.entries(od.filled || {}).map(([k, v]) => `${k}=${/^hp/.test(k) ? maskHp(v) : maskName(v)}`).join(' ') || '-',
+      입력기간: (od.matched && Object.values(od.matched).join(' | ')) || '-',
+      누락: (od.missing || []).join(',') || '없음', fill_ms: od.fillMs ?? '-',
+    });
+    // 필드 확정 근거: 화면의 모든 입력란을 키/라벨과 함께 남긴다 (개인값은 값이 아니라 기간만)
+    out('[FIELDS]', {
+      where: od.href.slice(0, 70),
+      inputs: (od.inputs || []).map((i) => `${i.key}[${i.type}](${i.label})`),
+      radios: (od.radios || []).map((r) => `${r.key}(${r.label})${r.checked ? '*선택' : ''}`),
+      buttons: od.buttons || [],
+    });
+    if (od.fillErr) log('[WARN] 입력기: ' + od.fillErr);
+    await shot('order-ready');
+    log('[HANDOFF] 이름/연락처/입금자명과 무통장입금이 화면에 채워졌습니다 — 입금자명은 예약자와 동일해야 하고, 최종 결제 진행은 사람이 클릭합니다');
+  }
+  c.ws.close();
   process.exit(0);
 }
 
@@ -234,7 +360,7 @@ for (let i = 0; i < 25 && (st.err || !st.onStep2); i++) {
 if (st.err) log('[WARN] 스냅샷 읽기를 마칠 때까지 확인하지 못했습니다: ' + st.err);
 out('[STEP2]', {
   url: st.url || '-', fill_ms: st.fillMs ?? '-', fill_after_hit_ms: fillAt ? fillAt - tHit : '-',
-  name: st.name || '-', mob: st.mob || '-', agree: st.agree || '-',
+  name: maskName(st.name) || '-', mob: maskHp(st.mob) || '-', agree: st.agree || '-',
   상품: (st.good || '').slice(0, 60) || '-', 캡차: st.captcha > 0 ? '이미완료' : '미완료',
 });
 if (st.hidden) out('  예약좌표', st.hidden);
@@ -254,7 +380,7 @@ if (st.blocked) {
     Object.assign(st, rg);
   } else {
     out('[BLOCK]', { 문구: BLOCK_MARK, after_hit_ms: Date.now() - tHit, 처리: '자동 진행 중단 (브라우저에서 직접 or --watch-only)' });
-    log('[BLOCK] 해제 주입 후에도 차단 화면입니다 — UI 의 DevTools 배지(차단 해제) 후 재사격 or --watch-only 를 쓰세요');
+    log('[BLOCK] 해제 주입 후에도 차단 화면입니다 — UI 의 DevTools 배지(차단 해제) 후 재예약 or --watch-only 를 쓰세요');
     await shot('blocked');
     await handoff('사이트가 자동화를 차단함');
     c.ws.close(); process.exit(7);
@@ -270,7 +396,7 @@ const runSubmit = (preview) => c
 /** 스크린샷 한 장 남기고 (결제 화면 증거/사후 확인용) 파일 경로 로그 */
 async function shot(tag) {
   try {
-    const dir = new URL('./runs/', import.meta.url).pathname;
+    const dir = fileURLToPath(new URL('./runs/', import.meta.url));
     fs.mkdirSync(dir, { recursive: true });
     const png = await c.send('Page.captureScreenshot', { format: 'png' });
     const file = `${dir}${tag}-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
@@ -354,4 +480,3 @@ while (Date.now() < until && !done) {
 }
 if (!done) log('[IDLE] 6분 내 클릭 없음. 준비 상태는 유지됩니다.');
 c.ws.close();
-
