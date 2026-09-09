@@ -10,5 +10,9 @@ services:
       CDP_PORT: "9222"
       BIND: "0.0.0.0"        # 컨테이너 밖(포트맵)으로 노출하려면 필수
       CHROME_ARGS: "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage"
+      # 예약 폼에 자동 입력될 개인 값 — 호스트 환경변수로만 주입한다 (이미지·저장소에 두지 않음)
+      #   KEYESCAPE_NAME=홍길동 KEYESCAPE_HP=010-0000-0000 docker compose up -d
+      KEYESCAPE_NAME: "${KEYESCAPE_NAME:-}"
+      KEYESCAPE_HP: "${KEYESCAPE_HP:-}"
     shm_size: "1g"           # Chrome/shared memory
     restart: unless-stopped
