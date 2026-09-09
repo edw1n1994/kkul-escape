@@ -15,7 +15,9 @@ server.out
 server.err
 
 # 개인 값은 이미지에도 담지 않는다 (런타임에 -e KEYESCAPE_NAME/KEYESCAPE_HP 로 주입)
-ui/local.env
-local.env
-.env
-ui/runs/
+# ※ 접두 ** 없이는 루트 경로만 매칭되므로 ui/ 아래 파일은 그대로 복사됐었다 (실측)
+**/local.env
+**/.env
+**/runs/
+**/*.log
+**/*.out
