@@ -191,7 +191,9 @@ export function filler(WANT, AGREES) {
     }
     if (!miss) { window.__FILL_MS = performance.now() - t0; window.__FILL_AT = Date.now(); return; }
     if (performance.now() - t0 > 20000) { window.__FILL_ERR = '입력 필드 대기 타임아웃'; return; }
-    requestAnimationFrame(tick);
+    // 배경 탭(포커스가 다른 창에 있음)에서는 requestAnimationFrame 이 아예 멈춘다(실측: 채움이 중간에 정지).
+    // → 화면이 안 보이는 상태에서는 타이머로 다음 시도를 예약한다.
+    if (document.hidden) setTimeout(() => tick(), 120); else requestAnimationFrame(tick);
   };
   tick();
 }

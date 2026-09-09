@@ -317,7 +317,7 @@ export function zwFiller(WANT) {
     const f = document.register;
     if (!f) {
       if (performance.now() - t0 > 20000) { window.__FILL_ERR = 'register 폼을 찾지 못함'; return; }
-      requestAnimationFrame(tick); return;
+      if (document.hidden) setTimeout(() => tick(), 120); else requestAnimationFrame(tick); return;   // 배경 탭에서 rAF 는 멈춘다
     }
     let miss = false;
     for (const k in WANT) {
@@ -329,7 +329,7 @@ export function zwFiller(WANT) {
     }
     if (!miss) { window.__FILL_MS = performance.now() - t0; window.__FILL_AT = Date.now(); return; }
     if (performance.now() - t0 > 20000) { window.__FILL_ERR = '입력 필드 대기 타임아웃 (인원 선택 목록이 안 떴을 수 있음)'; return; }
-    requestAnimationFrame(tick);
+    if (document.hidden) setTimeout(() => tick(), 120); else requestAnimationFrame(tick);   // 배경 탭에서 rAF 는 멈춘다
   };
   tick();
 }

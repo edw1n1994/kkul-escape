@@ -401,7 +401,9 @@ export function dpsFiller(WANT) {
       window.__FILL_ERR = '결제화면에서 ' + S.missing.join(', ') + ' 필드를 찾지 못했습니다';
       return;
     }
-    requestAnimationFrame(tick);
+    // 배경 탭에서는 requestAnimationFrame 이 멈춰 채움이 1차 시도시도 끝나지 않는다(실측: at=미완료, missing 잔존)
+    // → 화면이 안 보이면 타이머로 재시도한다(백그 스로틀링이 걸려도 rAF 처럼 완전히 멈추지는 않는다).
+    if (document.hidden) setTimeout(tick, 120); else requestAnimationFrame(tick);
   };
   tick();
 }

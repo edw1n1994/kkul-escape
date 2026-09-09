@@ -89,6 +89,21 @@ try {
     return { f: window.__DPS_FILL, hp: ['hp1', 'hp2', 'hp3'].map((n) => document.querySelector('[name=' + n + ']').value) };
   })()`);
   await t('연락처 3조각 사이트에서는 010/1234/5678 로 나눈다', JSON.stringify(frag.hp) === JSON.stringify(['010', '1234', '5678']), JSON.stringify(frag.hp));
+
+  // 회귀: 배경 탭(포커스가 다른 창)에서는 requestAnimationFrame 이 멈춰 채움이 1차에서 죽는다(실측 for 발견).
+  // document.hidden + rAF 정지를 재현해도 setTimeout 으로 끝까지 채워야 한다.
+  await pay.c.evaluate(`(() => {
+    Object.defineProperty(document, 'hidden', { get: () => true, configurable: true });
+    window.__RAF = 0; window.requestAnimationFrame = () => { window.__RAF++; return 0; };   // rAF 이 아무것도 예약하지 않는다
+    ['hp1', 'hp2', 'hp3'].forEach((n) => { document.querySelector('[name=' + n + ']').value = ''; });   // 재시도가 필요하게 만든다
+    window.__DPS_FILL = null; window.__FILL_ERR = null;
+  })()`);
+  const bg = await pay.c.evaluate(`(async () => {
+    (${dpsFiller.toString()})(${JSON.stringify(WANT)});
+    for (let i = 0; i < 120; i++) { if (window.__DPS_FILL && (window.__DPS_FILL.at || window.__DPS_FILL.err)) break; await new Promise((r) => setTimeout(r, 40)); }
+    return { s: window.__DPS_FILL, raf: window.__RAF, hp: ['hp1', 'hp2', 'hp3'].map((n) => document.querySelector('[name=' + n + ']').value) };
+  })()`);
+  await t('배경 탭(rAF 정지)에서도 setTimeout 으로 끝까지 채운다', !!bg.s.at && !bg.s.err && bg.hp.join('') === '01012345678', JSON.stringify({ at: !!bg.s.at, hp: bg.hp.join('/'), err: bg.s.err, raf: bg.raf }));
   await close(pay.tab);
 
   /* ---------- ④ '예약하기' 게이트 ---------- */

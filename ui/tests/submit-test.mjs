@@ -9,6 +9,7 @@
  * reCAPTCHA 토큰은 '사람이 통과한 상태' 를 재현한 값이며, 코드 자체가 토큰을 만들지는 않는다.
  */
 import { cdp, sleep, step2Submit, STEP2_READ } from '../lib.mjs';
+import { readFile } from 'node:fs/promises';
 
 const argv = process.argv.slice(2);
 const PORT = Number(argv[argv.indexOf('--port') + 1] || 9222);
@@ -83,6 +84,12 @@ const bcall = await bc.evaluate(`(${step2Submit.toString()})(${JSON.stringify({ 
   .catch((e) => ({ ok: false, why: e.message }));
 await t('차단 화면에서는 제출을 시도하지 않는다', bcall.ok === false && bcall.blocked === true, bcall.why);
 await fetch(`http://127.0.0.1:${PORT}/json/close/${btab.id}`).catch(() => {});
+
+// 회귀: 포커스가 다른 창에 가면(배경 탭) requestAnimationFrame 이 멈춰 재시도가 죽는다 — 실측에서
+// 단편선 결제화면 채움이 1차 시도시도 끝나지 않았다. 세 주입 입력기(lib.filler · sites.zwFiller · dps.dpsFiller)
+// 모두 document.hidden 일 때 setTimeout 으로 우회해야 한다. (동작 자체는 dps-test.mjs 의 '배경 탭(rAF 정지)' 항목이 실제로 검증한다.)
+const src = await Promise.all(['../lib.mjs', '../sites.mjs', '../dps.mjs'].map((f) => readFile(new URL(f, import.meta.url), 'utf8')));
+await t('세 입력기 모두 배경 탭(rAF 정지) 대비 setTimeout 분기가 있다', src.every((s) => /document\.hidden[\s\S]{0,90}setTimeout/.test(s)), src.map((s) => (/document\.hidden/.test(s) ? 'O' : 'X')).join(' '));
 
 await fetch(`http://127.0.0.1:${PORT}/json/close/${tab.id}`).catch(() => {});
 console.log(fail ? `\n실패 ${fail} 건 (전체 ${total})` : `\n${total}/${total} 통과 — 클릭은 [토큰 존재 + 좌표/약관/예약자/상품명·금액 검증] 후에만 1회, 차단 화면에서는 시도조차 하지 않습니다`);
