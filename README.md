@@ -103,6 +103,8 @@ node ui/runner.mjs --zizum 18 --theme 57 --info 34 --date 2026-09-14 --times "19
 ```bash
 cp ui/local.env.example ui/local.env     # 로컬에만 남는 파일 (.gitignore 됨)
 # ui/local.env  →  KEYESCAPE_NAME=홍길동 / KEYESCAPE_HP=010-0000-0000
+docker run -d -e KEYESCAPE_NAME=홍길동 -e KEYESCAPE_HP=010-0000-0000 \
+  -p 8898:8899 keyescape-ui              # 컨테이너는 환경변수로 받는다 (이미지에 개인 값을 담지 않음)
 ```
 
 예약 화면에 자동 입력될 값이고 실행할 때마다 브라우저에 저장된다.
