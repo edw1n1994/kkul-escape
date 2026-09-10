@@ -6,7 +6,7 @@
  * 무시하고 about:blank 만 연다. 실제 런너는 "탭을 만들고 → 주입하고 → Page.navigate" 순으로
  * 움직이므로, 테스트도 같은 경로(Page.navigate)로 탭을 준비해야 실사용과 같은 상태를 검증한다.
  *
- *   node docker-opentab.mjs [URL]        CDP_PORT 로 포트 지정 (기본 9222)
+ *   node scripts/docker/docker-opentab.mjs [URL]        CDP_PORT 로 포트 지정 (기본 9222)
  */
 const PORT = Number(process.env.CDP_PORT || 9222);
 const URL2 = process.argv.find((a) => /^https?:/.test(a)) || 'https://www.keyescape.com/reservation1.php';

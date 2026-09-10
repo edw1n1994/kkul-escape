@@ -26,7 +26,7 @@ ok()   { printf '  \033[32m✔\033[0m %-16s %s\n' "$1" "$2"; }
 warn() { printf '  \033[33m!\033[0m %-16s %s\n' "$1" "$2"; }
 bad()  { printf '  \033[31m✘\033[0m %-16s %s\n' "$1" "$2"; FAIL=1; }
 
-echo "== 키이스케이프 사격대 전제조건 검사 (CDP:$CDP_PORT / UI:$PORT) =="
+echo "== 예약도우미 전제조건 검사 (CDP:$CDP_PORT / UI:$PORT) =="
 
 # 1) Node
 if command -v node >/dev/null 2>&1; then
@@ -123,7 +123,7 @@ if curl -sf --max-time 3 "http://127.0.0.1:${CDP_PORT}/json/version" >/dev/null 
   fi
   CNT=$(printf '%s' "$ST" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(j.count)}catch{console.log(0)}})')
   if [ "$CNT" = "0" ]; then
-    ok "DevTools" "keyescape 탭 없음 (사격 시점에 자동 주입됨)"
+    ok "DevTools" "keyescape 탭 없음 (예약 시점에 자동 주입됨)"
   elif [ "$RC" = "0" ]; then
     ok "DevTools" "${CNT}개 탭 모두 해제 (디텍터/우클릭/F12)"
   else

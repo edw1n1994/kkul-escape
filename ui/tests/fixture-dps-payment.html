@@ -34,19 +34,21 @@
   </select>
   <div><label for="depositor_name"></label><input type="text" name="depositor_name" id="depositor_name" placeholder="입금자명 (미입력시 주문자명)"></div>
 
+  <!-- 실측: 전체동의(paymentAllCheck) + 개별 약관 + 이름 없는 약관 체크박스가 함께 있다. 광고성 수신은 선택이라 자동 체크 대상이 아니다. -->
+  <h4>약관동의</h4>
+  <ul class="agree">
+    <li><label><input type="checkbox" name="paymentAllCheck" value="Y"> 전체동의</label></li>
+    <li><label><input type="checkbox" name="agree_personal" value="Y"> 개인정보 수집·이용에 동의합니다.</label></li>
+    <li><label><input type="checkbox" name="agree_terms" value="Y"> 예약 이용약관에 동의합니다.</label></li>
+    <li><input type="checkbox" name="agree_news" value="Y"> 광고성 정보 수신에 동의합니다.</li>
+    <li><label><input type="checkbox" name="agree_notice" value="Y"></label> 예약 취소·환불 고지를 확인했습니다.</li>
+  </ul>
+
   <p class="pay_amount">결제예상금액 56,000원</p>
   <input type="hidden" name="order_code" value="o2026000000000000">
   <input type="hidden" name="pg_type" value="tosspa">
   <a href="javascript:;" class="btn pay" onclick="window.__PAY_COUNT=(window.__PAY_COUNT||0)+1">결제하기</a>
 </form>
-
-<script>
-  // 제출 카운터: 입력기가 결제/주문 버튼을 누르면 안 되므로 이 값으로 검증한다.
-  document.getElementById('order_f').addEventListener('submit', function () { window.__PAY_COUNT = (window.__PAY_COUNT || 0) + 1; return false; });
-</script>
-</body>
-</html>
-
 
 <script>
   // 제출 카운터: 입력기가 결제/주문 버튼을 누르면 안 되므로 이 값으로 검증한다.

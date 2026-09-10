@@ -6,6 +6,7 @@ local.env
 *.log
 *.out
 *.png
+!desktop/assets/honey-pot-transparent.png
 ui/runs/
 step2-snapshot.json
 netlog*/
@@ -13,3 +14,8 @@ netlog*/
 # 잡동사니
 .DS_Store
 node_modules/
+dist/
+.build-cache/
+
+# 로컬 보관 자료
+.local/

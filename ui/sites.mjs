@@ -14,6 +14,7 @@
  */
 import { getTimes as keGetTimes, getCalendar as keGetCalendar, openInfo as keOpenInfo, cdpList, BRANCHES, LEAD_DAYS_FALLBACK, sleep } from './lib.mjs';
 import { DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth } from './dps.mjs';
+import { naverProducts, naverPreview, naverOpenInfo, naverToday } from './naver.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +49,11 @@ export const SITES = {
     needsInfo: false, login: 'required', deposit: true,
     openTime: DPS.openTime, leadDays: DPS.leadDays,
     note: '로그인 필수. 슬롯 페이지(reserve_g?idx=…) 에서 예약하기 → 결제화면에서 이름/연락처/입금자명 + 무통장입금. 최종 결제 진행은 사람이 클릭',
+  },
+  naver: {
+    key: 'naver', label: '네이버 예약', base: 'https://booking.naver.com',
+    buyerMode: 'account', agrees: [], captcha: '필요 시 직접 인증', needsInfo: false,
+    login: 'required', note: '네이버 계정으로 예약합니다. 신청서까지 자동 진행하고 최종 확인·결제는 직접 합니다.',
   },
 };
 export const siteOf = (k) => SITES[String(k || 'keyescape').toLowerCase()] || SITES.keyescape;
@@ -249,18 +255,21 @@ export async function zwBranches(force = false) {
 /* ===================== 라우터가 쓰는 공통 façade ===================== */
 export async function apiTimes(site, zizum, theme, date) {
   const k = siteOf(site).key;
+  if (k === 'naver') return naverPreview(zizum, theme, date);
   if (k === 'zeroworld') return await zwTimes(zizum, theme, date);
   if (k === 'dps') return await dpsTimes(date);                 // 달력 한 장에 그 달 전체 슬롯이 있다
   return await keGetTimes(zizum, theme, date);
 }
 export async function apiOpenInfo(site, { zizum, theme, info, date }) {
   const k = siteOf(site).key;
+  if (k === 'naver') return naverOpenInfo(zizum, theme, date);
   if (k === 'zeroworld') return await zwOpenInfo({ zizum, theme, date });
   if (k === 'dps') return await dpsOpenInfo({ date });
   return await keOpenInfo({ zizum, theme, info, date });
 }
 export async function apiBranches(site) {
   const k = siteOf(site).key;
+  if (k === 'naver') return [...new Map(naverProducts().map(p => [p.business, p.branch])).entries()];
   if (k === 'zeroworld') return await zwBranches();
   if (k === 'dps') return SITES.dps.branches;
   return SITES.keyescape.branches;
@@ -268,6 +277,7 @@ export async function apiBranches(site) {
 /** 테마(=슬롯 상품) 목록: 키이스케이프/제로월드는 지점별, 단편선은 강남 이야기×시간대 18종 */
 export async function apiThemes(site, zizum) {
   const k = siteOf(site).key;
+  if (k === 'naver') return { ok: true, themes: naverProducts().filter(p => p.business === String(zizum)) };
   if (k === 'zeroworld') return await zwThemes(zizum);
   if (k === 'dps') {
     const themes = await dpsProducts().catch(() => []);
@@ -277,13 +287,14 @@ export async function apiThemes(site, zizum) {
 }
 export async function apiToday(site, info) {
   const k = siteOf(site).key;
+  if (k === 'naver') return naverToday();
   if (k === 'dps') return dpsToday();
   if (k === 'zeroworld') return zwDate(0);
   const cal = await keGetCalendar(Number(info) || 34).catch(() => null);
   return cal?.calendarData?.today || zwDate(0);
 }
 export { LEAD_DAYS_FALLBACK, DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth };
-export { dpsFiller, dpsBook, dpsSlotRead, dpsOrderRead, dpsLoginRead } from './dps.mjs';
+export { dpsFiller, dpsBook, dpsPay, dpsSlotRead, dpsOrderRead, dpsLoginRead } from './dps.mjs';
 
 /* ===================== 브라우저 측 (CDP 로 문자열화해 주입) ===================== */
 /** 사이트 탭을 찾거나 연다 (제로월드는 zizum 이 url 에 들어간다) */
@@ -365,7 +376,7 @@ export const ZW_READ = `(() => {
   const txt = document.body.innerText.replace(/\\s+/g, ' ');
   const btn = document.querySelector('.rese-form__button');
   return {
-    onZw: /rev\\.make/.test(location.pathname), url: location.href.slice(0, 120),
+    onZw: location.hostname === 'zeroworldkorea.com' && new URL(location.href).searchParams.get('go') === 'rev.make', url: location.href.slice(0, 120),
     fillAt: window.__FILL_AT || null, fillMs: window.__FILL_MS === undefined ? null : window.__FILL_MS,
     fillErr: window.__FILL_ERR || null,
     name: val('name'), mobile: val('mobile'), person: val('person'),
@@ -376,5 +387,4 @@ export const ZW_READ = `(() => {
     msg: (txt.match(/선택완료|예약확정|예약일|시간 선택/) || [''])[0]
   };
 })()`;
-
 

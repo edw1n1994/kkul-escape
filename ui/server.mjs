@@ -11,12 +11,14 @@
  *  GET  /api/slots    ?zizum&theme&date             그 날짜의 시간대 + enable
  *  GET  /api/matrix   ?zizum&theme&info&days=14     날짜별 가능 개수(오픈 창 파악)
  *  GET  /api/step2    reservation2 현재 상태 (읽기 전용)
- *  POST /api/run      {zizum,theme,info,date,times,tname,openAt,deadline,person,name,hp}
+ *  POST /api/run      {zizum,theme,info,date,times,tname,openAt,deadline,person,name,hp,dep,
+ *                      autoSubmit,agreeAll,paySubmit,payTotal,watchOnly,dry}
  *  POST /api/stop     실행 중단
  *  GET  /api/log      최근 로그 링버퍼
  *  GET  /api/events   SSE 실시간 로그
  */
 import http from 'node:http';
+import { naverProduct, naverOpenInfo, naverLogin, openNaver, naverStatus, validateNaverRun } from './naver.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -50,6 +52,9 @@ function pushLine(line) {
 function startRun(body) {
   if (run.child) return { ok: false, msg: '이미 실행 중입니다. 먼저 [중단] 하세요.' };
   const site = siteOf(body.site).key;
+  if (site === 'naver') {
+    try { validateNaverRun({ ...body, dry: body.dry }); } catch (e) { return { ok: false, msg: e.message }; }
+  }
   const need = ['zizum', 'theme', 'date'];
   if (siteOf(site).needsInfo) need.push('info');
   if (!body.dry) need.push('times');
@@ -65,16 +70,22 @@ function startRun(body) {
     '--agrees', String(body.agrees || siteOf(site).agrees.join(',')),
   ];
   // 예약자 이름/연락처는 하드코딩하지 않는다: 요청 본문 → 환경변수 → ui/local.env 순으로 해석한다
-  const pname = personal('KEYESCAPE_NAME', body.name);
-  const php = personal('KEYESCAPE_HP', body.hp);
+  const pname = site === 'naver' ? '' : personal('KEYESCAPE_NAME', body.name);
+  const php = site === 'naver' ? '' : personal('KEYESCAPE_HP', body.hp);
   if (pname) args.push('--name', pname);
   if (php) args.push('--hp', php);
-  const dep = personal('KEYESCAPE_DEP', body.dep);   // 단편선 결제화면의 입금자명 (예약자와 동일해야 하는 값)
+  const dep = site === 'naver' ? '' : personal('KEYESCAPE_DEP', body.dep);   // 단편선 결제화면의 입금자명 (예약자와 동일해야 하는 값)
   if (dep) args.push('--dep', dep);
   if (body.times) args.push('--times', String(body.times));
   if (body.openAt) args.push('--open-at', new Date(String(body.openAt)).toISOString());
   if (body.person) args.push('--person', String(body.person));
-  if (body.autoSubmit) args.push('--auto-submit');   // 캡차 통과 후 '예약하기' 자동 클릭 (기본 off)
+  // '예약하기' 자동 클릭: 키이스케이프는 opt-in, 단편선은 러너 기본값이 on — 화면에서 끈 경우만 플래그로 넘긴다
+  if (body.autoSubmit) args.push('--auto-submit');
+  if (site === 'naver' && body.autoSubmit === false) args.push('--no-auto-submit');
+  if (site === 'dps' && body.autoSubmit === false) args.push('--no-auto-submit');
+  if (site === 'dps' && body.agreeAll === false) args.push('--no-agree-all');   // 약관 전체동의 자동 체크(기본 on) 를 끄는 경우
+  if (site === 'dps' && body.paySubmit) args.push('--pay-submit');              // 최종 '결제하기' — 화면 체크박스 전용, 기본 off
+  if (site === 'dps' && body.payTotal) args.push('--pay-total', String(body.payTotal).replace(/[^0-9]/g, ''));
   if (body.humanWait) args.push('--human-wait', String(body.humanWait));   // 사람 클릭 대기 창(초)
   if (body.watchOnly) args.push('--watch-only');     // 디버거 미연결 감시 전용 (차단과 무관하게 동작)
   if (body.dry) args.push('--dry');
@@ -195,6 +206,14 @@ const server = http.createServer(async (req, res) => {
       const today = await apiToday(site, a.info);
       const startUTC = Date.parse(today + 'T00:00:00Z');
       const out = [];
+      if (site === 'naver') {
+        for (let i = 0; i < days; i++) {
+          const date = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
+          const oi = naverOpenInfo(a.zizum, a.theme, date);
+          out.push({ date, dow: '일월화수목금토'[new Date(date + 'T00:00:00Z').getUTCDay()], total: 0, open: 0, preview: true, past: oi.past });
+        }
+        return json(res, 200, { ok: true, site, serverToday: today, days: out });
+      }
       if (site === 'dps') {   // 월간 달력 한 장에 그 달 슬롯 전부가 있다 → 날짜마다 104KB 를 받지 않는다
         const byMonth = {};
         for (const mo of [...new Set(Array.from({ length: days }, (_, i) => new Date(startUTC + i * 86400000).toISOString().slice(0, 7)))]) {
@@ -223,8 +242,14 @@ const server = http.createServer(async (req, res) => {
       }
       return json(res, 200, { ok: true, site, serverToday: today, days: out });
     }
+    if (p === '/api/naver/open' && req.method === 'POST') {
+      if (run.child) return json(res, 409, { ok: false, msg: '예약 대기 중에는 새 로그인 창을 열 수 없습니다' });
+      await openNaver(Number(a.cdp) || CDP_PORT, naverProduct(a.zizum, a.theme));
+      return json(res, 200, { ok: true });
+    }
     if (p === '/api/step2') {
       const site = siteOf(a.site);
+      if (site.key === 'naver') return json(res, 200, { site: 'naver', ...await naverStatus(Number(a.cdp) || CDP_PORT, a.zizum, a.theme, a.date, a.time) });
       const t = site.key === 'zeroworld'
         ? await siteTab(Number(a.cdp) || CDP_PORT, 'zeroworld', a.zizum, false)
         : await keTab(Number(a.cdp) || CDP_PORT, null, false);
@@ -245,7 +270,7 @@ const server = http.createServer(async (req, res) => {
       if (site.login !== 'required') {
         return json(res, 200, { ok: true, loggedIn: null, required: false, site: site.key, msg: `${site.label} 은 로그인 없이 예약할 수 있습니다`, source: '사이트 정책' });
       }
-      const r = await dpsLogin(Number(a.cdp) || CDP_PORT);
+      const r = site.key === 'naver' ? await naverLogin(Number(a.cdp) || CDP_PORT, a.zizum, a.theme) : await dpsLogin(Number(a.cdp) || CDP_PORT);
       return json(res, 200, { ...r, required: true, site: site.key });
     }
     if (p === '/api/log') return json(res, 200, { running: !!run.child, exit: run.exit, lines: run.lines });

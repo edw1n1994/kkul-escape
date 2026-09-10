@@ -5,7 +5,7 @@
  *   node unlock.mjs [URL] [--quiet]
  *
  * 하는 일
- *   1) CDP(기본 9222) 접속. 크롬이 없어 접속 안 되면 호출자가 start.sh 로 기동한다.
+ *   1) CDP(기본 9222) 접속. 크롬이 없어 접속 안 되면 호출자가 tools/legacy/start.sh 로 기동한다.
  *   2) Extensions.loadUnpacked 로 ext/ 를 설치  → 모든 탭·모든 프레임에 자동 주입 (세션 전용)
  *      (이 빌드의 크롬은 로드를 거부할 수 있다. 그때도 아래 3번으로 동일한 해제가 적용된다)
  *   3) keyescape 탭 각각에 attach 후

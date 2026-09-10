@@ -1,0 +1,60 @@
+{
+  "name": "kkul-escape",
+  "version": "1.0.0",
+  "private": true,
+  "description": "키이스케이프·제로월드 예약 도우미",
+  "author": "kkul-escape contributors",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test:desktop": "node --test desktop/tests/*.test.cjs",
+    "build:mac": "electron-builder --mac zip --arm64 --x64",
+    "build:win": "electron-builder --win zip --x64",
+    "start:ui": "node ui/server.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "npm run check && node --test desktop/tests/*.test.cjs ui/tests/zw-submit-test.mjs ui/tests/naver-test.mjs",
+    "test:browser": "node ui/tests/submit-test.mjs && node ui/tests/dps-test.mjs && node ui/tests/naver-ui-test.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.kkulescape.desktop",
+    "productName": "예약도우미",
+    "icon": "desktop/assets/honey-pot-transparent.png",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop/*.cjs",
+      "desktop/assets/honey-pot-transparent.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".",
+        "to": "runtime",
+        "filter": [
+          "ui/*.mjs",
+          "ui/public/index.html",
+          "ui/zw-open-times.json",
+          "ext/inject.js",
+          "unlock.mjs",
+          "ui/naver-products.json"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "identity": "-",
+      "extendInfo": {
+        "CFBundleName": "예약도우미"
+      }
+    },
+    "win": {
+      "signExecutable": false
+    },
+    "artifactName": "Kkul-Escape-${version}-${os}-${arch}.${ext}"
+  }
+}

@@ -1,11 +1,11 @@
 ﻿<#
-  키이스케이프 예약 사격대 - 원샷 설치/기동 (Windows)
+  예약도우미 - 원샷 설치/기동 (Windows)
 
   사용법
     setup.bat                     더블클릭 실행 (검사 -> 부족한 것 자동 구성 -> DevTools 해제 -> UI 기동 -> 브라우저)
     .\setup.ps1                  同上 (PowerShell 에서)
     .\setup.ps1 -Check            검사만 (아무것도 켜지 않음)
-    .\setup.ps1 -Stop             UI 서버/사격 프로세스만 종료 (크롬 유지)
+    .\setup.ps1 -Stop             UI 서버/예약 프로세스만 종료 (크롬 유지)
     .\setup.ps1 -Stop -Chrome     크롬까지 종료 (booking.naver 탭이 있으면 거부 = 다른 예약 보호)
     .\setup.ps1 -Port 9000 -CdpPort 9333     포트 지정 (다른 작업과 병렬 시 격리 권장)
 
@@ -57,7 +57,7 @@ function Find-Chrome {
 }
 
 Write-Host "==============================================="
-Write-Host " 키이스케이프 예약 사격대 설치  (CDP:$CdpPort / UI:$Port)"
+Write-Host " 예약도우미 설치  (CDP:$CdpPort / UI:$Port)"
 Write-Host "==============================================="
 
 # ---------- 종료 모드 ----------
@@ -75,7 +75,7 @@ if ($Stop) {
       }
     }
   } catch { Warn "프로세스 조회 실패: $($_.Exception.Message)" }
-  if ($script:killed -gt 0) { Ok "UI 서버/사격 프로세스 ${script:killed}개 종료" } else { Info "종료할 node 프로세스 없음" }
+  if ($script:killed -gt 0) { Ok "UI 서버/예약 프로세스 ${script:killed}개 종료" } else { Info "종료할 node 프로세스 없음" }
 
   if ($Chrome) {
     $list = Get-Json "$Cdp/json/list"
@@ -177,7 +177,7 @@ function Get-Lock {
 $s = Get-Lock
 if (-not $s) { Bad "상태 검사를 실행할 수 없습니다 (node 필요)" }
 elseif ($s.cdp -eq 'DOWN') { Warn "CDP 가 없어 검사 불가 - 크롬을 켠 뒤 다시 실행" }
-elseif ($s.count -eq 0) { Ok "keyescape 탭 없음 (사격 실행 시 자동 주입됨)" }
+elseif ($s.count -eq 0) { Ok "keyescape 탭 없음 (예약 실행 시 자동 주입됨)" }
 elseif ($s.allUnlocked) { Ok "$($s.count)개 탭 모두 해제됨" }
 elseif ($Check) { Bad "$($s.count)개 탭 중 일부 미해제 - .\setup.ps1 로 복구" }
 else {
@@ -206,7 +206,7 @@ if ($Shortcut) {
     $sc = $ws.CreateShortcut($lnk)
     $sc.TargetPath = (Join-Path $Root 'setup.bat')
     $sc.WorkingDirectory = $Root
-    $sc.Description = '키이스케이프 예약 사격대 (검사 + 크롬 기동 + UI 실행)'
+    $sc.Description = '예약도우미 (검사 + 크롬 기동 + UI 실행)'
     $sc.Save()
     Ok "생성됨: $lnk"
   } catch { Warn "바로가기 생성 실패: $($_.Exception.Message)" }
@@ -216,7 +216,7 @@ Write-Host ""
 Write-Host "==============================================="
 if ($script:Bad -eq 0) {
   Write-Host " 준비 완료  ->  $UiUrl" -ForegroundColor Green
-  Write-Host "   지점/테마/날짜/시간대를 고르고 [오픈 시각에 사격] -> 브라우저에서 캡차 + 예약하기 + 결제"
+  Write-Host "   지점/테마/날짜/시간대를 고르고 [오픈 시각에 예약] -> 브라우저에서 캡차 + 예약하기 + 결제"
 } else {
   Write-Host " 일부 미충족 ($($script:Bad)건) - 위 [ X ] 항목을 처리한 뒤 다시 실행하세요." -ForegroundColor Yellow
 }

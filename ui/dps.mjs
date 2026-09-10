@@ -290,25 +290,36 @@ export function dpsOrderRead() {
     bookingForm: !!f,
     hidden: f ? Array.from(f.querySelectorAll('input[type=hidden]')).reduce((a, e) => (a[e.name] = String(e.value || '').slice(0, 24), a), {}) : null,
     inputs, radios, buttons: btns,
+    // 약관 체크박스 상태 — '결제하기' 게이트가 근거로 쓰고 로그에도 그대로 나온다 (이름이 없는 약관은 주변 텍스트로 노출)
+    checks: Array.from(document.querySelectorAll('input[type=checkbox]')).map((e) => ({
+      key: [e.name, e.id].filter(Boolean).join('/')
+        || (e.closest && e.closest('li,label,p,td,dt,div') ? txt(e.closest('li,label,p,td,dt,div')).slice(0, 24) : '(체크박스)'),
+      checked: !!e.checked,
+    })).slice(0, 14),
+    agreeLeft: (window.__DPS_FILL && window.__DPS_FILL.agree && window.__DPS_FILL.agree.left) || [],
     pay: (radios.find((r) => r.checked && /무통장|가상/.test(r.label)) || {}).label
       || (/무\s*통\s*장\s*입\s*금/.test(body) ? '화면에 무통장입금 있음 (선택 상태 미확인)' : ''),
     total: (body.replace(/\s+/g, ' ').match(/[0-9][0-9,]*\s*원/) || [''])[0],
     fillAt: F ? F.at : null, fillMs: F ? Math.round(F.ms) : null, filled: F ? F.filled : null,
     matched: F ? F.matched : null, missing: F ? F.missing : null, fillErr: window.__FILL_ERR || null,
+    bank: (F && F.bank) || '', agreeState: (F && F.agree) || null,
   };
 }
 
 /**
- * 결제(주문) 화면 입력기 — **이름 / 연락처 / 입금자명**을 채우고 결제수단을 **무통장입금**으로 고른다.
- * 최종 결제(주문 진행) 버튼은 절대 누르지 않는다.
+ * 결제(주문) 화면 입력기 — **이름 / 연락처 / 입금자명**을 채우고 결제수단을 **무통장입금**으로 고른 뒤
+ * **약관 전체동의(개별 약관 포함)까지** 체크한다. 최종 `결제하기` 는 여기서 누르지 않는다 → 별도 게이트 `dpsPay`.
  *
  * 아임웹은 필드 name/id 가 설정마다 달라서 3단으로 찾는다:
  *   ① 라벨/주변 텍스트 정규식  ② 알려진 name/id 후보  ③ 없으면 missing 으로 남긴다 (추측 입력 금지)
  * 판정 순서는 입금자 → 연락처 → 이름. '예약자명' 도 '자명' 을 포함하므로 입금자를 먼저 판단해야 오입력이 없다.
+ * OPT.agreeAll:true → 약관 체크박스를 체크한다(기본 false — 러너가 판단해서 넘긴다). 광고/마케팅 수신은 절대 체크하지 않는다.
  */
-export function dpsFiller(WANT) {
+export function dpsFiller(WANT, OPT) {
+  const O = OPT || {};
+  const AGREE_ALL = !!O.agreeAll;
   const t0 = performance.now();
-  const S = { at: null, ms: 0, filled: {}, matched: {}, missing: [], pay: null, err: null };
+  const S = { at: null, ms: 0, filled: {}, matched: {}, missing: [], pay: null, bank: null, agree: null, err: null };
   // 슬롯 페이지(/reserve_g) 등 결제화면이 아닌 문서에서 헛돌면(25초 rAF 루프) 안 된다: 결제화면일 때만 돈다.
   const looksPay = () => /shop_payment|order_code|\/order\b/i.test(location.href)
     || /무\s*통\s*장/.test(document.body ? document.body.innerText || '' : '');
@@ -374,6 +385,52 @@ export function dpsFiller(WANT) {
     if (lb) { lb.click(); return 'click:' + lb.tagName; }
     return '';
   };
+  /** 약관성 체크박스 분류 — 실측에서 일부 약관은 name/id 없이 체크박스만 있었다 → 주변 텍스트로 함께 판단한다.
+   *  전체동의는 아임웹에서 name=id=paymentAllCheck 로 노출된다(실측 확인). */
+  const agreeBoxes = () => {
+    const need = [], skipped = [];
+    for (const e of Array.from(document.querySelectorAll('input[type=checkbox]'))) {
+      if (e.disabled) continue;
+      const k = [e.name || '', e.id || ''].join(' ').toLowerCase();
+      const host = e.closest && e.closest('li,label,p,td,dt,div');
+      const lb = (labelOf(e) + ' ' + (host ? host.innerText || '' : '')).replace(/\s+/g, ' ').trim();
+      const isAgree = /agree|consent|paymentall|all[_-]?chk|chk[_-]?all|chk[_-]?agree/i.test(k)
+        || /동의|약관|수집|이용|환불|취소|고지/.test(lb);
+      if (!isAgree) continue;
+      // 선택 수신(광고/마케팅 등) 은 전체동의와 무관하게 절대 대신 체크하지 않는다
+      if (/광고|마케팅|이벤트|뉴스레터|행사\s*안내/.test(lb)) { skipped.push(e.name || e.id || lb.slice(0, 18)); continue; }
+      need.push(e);
+    }
+    return { need, skipped };
+  };
+  const labelAll = (e) => {
+    const host = e.closest && e.closest('li,label,p,td,dt,div');
+    return [e.name || '', e.id || '', labelOf(e), host ? host.innerText || '' : ''].join(' ');
+  };
+  /** '전체동의/전체선택' 을 먼저 누른 뒤(사이트가 개별 체크까지 연동한다) 남은 개별 약관을 확인한다. */
+  const doAgree = () => {
+    const { need, skipped } = agreeBoxes();
+    const all = need.find((e) => /paymentall|all[_-]?chk|chk[_-]?all|allagree/i.test([e.name || '', e.id || ''].join(' ')) || /전체\s*동의|전체\s*선택/.test(labelAll(e)));
+    if (all && !all.checked) all.click();
+    const left = [];
+    for (const e of need) {
+      if (e.checked) continue;
+      e.click();
+      if (!e.checked) left.push(e.name || e.id || '약관');   // 사이트가 즉시 되돌려 놓은 경우(별도 검증 요구 등)
+    }
+    S.agree = { total: need.length, checked: need.filter((e) => e.checked).length, left, skipped, all: all ? (all.name || all.id || '전체동의') : '' };
+    return !left.length;
+  };
+  /** 입금계좌(select[name=cash_idx]) — 계좌가 **하나뿐**이면 선택해 준다(선택지가 하나인 것을 고른 것일 뿐 판단이 아니다).
+   *  선택지가 여러 개면 사람이 고르게 두고 비워 둔다 (게이트가 '입금계좌 미선택' 으로 결제를 막는다). */
+  const pickBank = () => {
+    const s = document.querySelector('select[name=cash_idx]');
+    if (!s) return '';
+    const real = Array.from(s.options).filter((o) => o.value && o.value !== '0');
+    if (s.value && s.value !== '0') return 'already';
+    if (real.length === 1) { setV(s, real[0].value); return 'auto:' + real.length; }
+    return real.length > 1 ? 'multi' : 'none';
+  };
   const tick = () => {
     const by = { name: [], hp: [], dep: [] };
     for (const e of usable()) { const k = classify(e); if (k) by[k].push(e); }
@@ -390,15 +447,29 @@ export function dpsFiller(WANT) {
     if (WANT.name) { if (!by.name.length) S.missing.push('이름'); else put(by.name[0], WANT.name, 'name'); }
     if (!S.pay) S.pay = pickPay();
     if (!S.pay) S.missing.push('무통장입금');
+    if (!S.bank) S.bank = pickBank();
+    // 약관: 자동 체크(OPT.agreeAll) 일 때는 클릭하고, 아닐 때는 상태만 밖에 노출한다(결제 게이트의 거부 근거로 쓰인다)
+    let agreeOk = true;
+    if (AGREE_ALL) agreeOk = doAgree();
+    else {
+      const a = agreeBoxes();
+      S.agree = { total: a.need.length, checked: a.need.filter((e) => e.checked).length, left: a.need.filter((e) => !e.checked).map((e) => e.name || e.id || '약관'), skipped: a.skipped, all: '' };
+      agreeOk = true;   // 자동 체크가 꺼져 있을 때 약관 미체크는 채움 완료를 막지 않는다 — '결제하기' 게이트가 클릭 시점에 따로 본다
+    }
     window.__DPS_FILL = S;
     const need = ['name', 'hp', 'dep'].filter((k) => WANT[k] && !S.filled[k]);
-    if (!need.length && S.pay) {
+    if (!need.length && S.pay && agreeOk) {
       S.ms = performance.now() - t0; S.at = Date.now();
       window.__FILL_AT = S.at; window.__FILL_MS = S.ms; return;
     }
     if (performance.now() - t0 > 25000) {
-      S.err = '찾지 못함: ' + S.missing.join(', ');
-      window.__FILL_ERR = '결제화면에서 ' + S.missing.join(', ') + ' 필드를 찾지 못했습니다';
+      // 필드는 채워졌는데 약관만 안 되는 경우와, 필드 자체가 없는 경우를 구분한다 (전자는 결제 게이트가 따로 막는다)
+      const fieldMiss = need.length || !S.pay;
+      S.err = fieldMiss ? '찾지 못함: ' + S.missing.join(', ') : '약관 체크 실패: ' + ((S.agree && S.agree.left) || []).join(', ');
+      window.__FILL_ERR = fieldMiss
+        ? '결제화면에서 ' + S.missing.join(', ') + ' 필드를 찾지 못했습니다'
+        : '약관 체크박스가 체크된 상태로 유지되지 않습니다: ' + ((S.agree && S.agree.left) || []).join(', ');
+      if (!fieldMiss) { S.at = Date.now(); window.__FILL_AT = S.at; }   // 입력은 끝난 상태 — 결제 게이트가 약관 미체크로 거부한다
       return;
     }
     // 배경 탭에서는 requestAnimationFrame 이 멈춰 채움이 1차 시도시도 끝나지 않는다(실측: at=미완료, missing 잔존)
@@ -463,6 +534,78 @@ export function dpsBook(opt) {
   window.__DPS_BOOKED = Date.now();
   btn[0].click();
   out.ok = true; out.clickedAt = window.__DPS_BOOKED; out.why = '클릭 완료';
+  return out;
+}
+
+/**
+ * '결제하기' 클릭 — 돈이 나가는 최종 동작이므로 **기본 off**(UI 체크박스 / --pay-submit 로만 켜진다) 이고,
+ * 아래를 **모두** 통과해야만 누른다. 하나라도 걸리면 클릭하지 않고 이유를 돌려준다.
+ *   · 결제화면(/shop_payment/?order_code=) 일 것 — 슬롯/주문목록 페이지에서 헛클릭 금지
+ *   · 화면에 보이는 '무통장입금' 화면일 것 (카드 결제 화면에서 같은 버튼을 누르면 카드 결제가 진행된다)
+ *   · 입력기가 이름/연락처/입금자명을 끝까지 채웠고(`__DPS_FILL.at`), 화면의 값이 실제로 비어 있지 않을 것
+ *   · 결제수단 라디오가 무통장입금(pay_type=cash) 으로 선택되어 있고, 입금계좌(`cash_idx`)가 정해져 있을 것
+ *     (계좌가 하나뿐이면 입력기가 골라 둔다 — 선택지가 여러 개인데 비어 있으면 사람이 고르게 한다)
+ *   · 약관 체크박스(전체동의 포함) 가 전부 체크되어 있을 것 — 이 도구가 체크한 뒤에도 사이트가 되돌려 놓으면 거부
+ *   · 결제예상금액이 읽힐 것(0 원 금지), 목표 금액을 넘겼으면 그 값과 일치할 것
+ *   · 보이는 '결제하기' 가 정확히 1개, 이미 결제완료/취소 문구가 없을 것, 이 세션에서 이미 누른 적이 없을 것
+ */
+export function dpsPay(opt) {
+  const o = opt || {};
+  const txt = (e) => (e && (e.innerText || e.value) ? String(e.innerText || e.value).replace(/\s+/g, ' ').trim() : '');
+  const vis = (e) => e && e.offsetParent !== null;
+  const body = document.body ? document.body.innerText || '' : '';
+  const F = window.__DPS_FILL || null;
+  const hostOf = (e) => (e.closest && e.closest('li,label,p,td,dt,div')) || null;
+  const labelAll = (e) => {
+    const l = e.id ? document.querySelector('label[for="' + e.id + '"]') : null;
+    const h = hostOf(e);
+    return [e.name || '', e.id || '', l ? l.innerText || '' : '', h ? h.innerText || '' : ''].join(' ');
+  };
+  // 입력기가 채운 약관 판정과 같은 기준 (이 함수는 따로 직렬화되므로 로직을 다시 담은 것이다 — 기준은 dpsFiller 와 동일해야 한다)
+  const agreeBoxes = () => Array.from(document.querySelectorAll('input[type=checkbox]')).filter((e) => {
+    const k = [e.name || '', e.id || ''].join(' ').toLowerCase();
+    const lb = labelAll(e).replace(/\s+/g, ' ');
+    if (/광고|마케팅|이벤트|뉴스레터|행사\s*안내/.test(lb)) return false;   // 선택 수신은 게이트 근거에서도 뺀다
+    return /agree|consent|paymentall|all[_-]?chk|chk[_-]?all|chk[_-]?agree/i.test(k) || /동의|약관|수집|이용|환불|취소|고지/.test(lb);
+  });
+  const boxes = agreeBoxes();
+  const unchecked = boxes.filter((e) => !e.checked).map((e) => e.name || e.id || txt(hostOf(e)) || '약관');
+  const btn = Array.from(document.querySelectorAll('a,button,input[type=submit],input[type=button]'))
+    .filter((e) => vis(e) && /^(결제하기|주문하기|결제진행)$/.test(txt(e).replace(/\s+/g, '')));
+  const cash = document.querySelector('input[name=pay_type][value=cash]');
+  const total = (body.replace(/\s+/g, ' ').match(/([0-9][0-9,]*)\s*원/) || [])[1] || '';
+  const totalNum = Number(String(total).replace(/[^0-9]/g, '')) || 0;
+  const problems = [];
+  if (!/shop_payment|order_code/i.test(location.href)) problems.push('결제화면이 아닙니다');
+  if (/결제\s*완료|주문\s*완료|입금\s*확인|결제가\s*취소|취소\s*완료/.test(body)) problems.push('이미 결제/취소된 화면');
+  if (!/무\s*통\s*장/.test(body)) problems.push('무통장입금 화면이 아님(카드 결제 화면일 수 있음)');
+  if (!F || !F.at) problems.push('입력기 완료 전');
+  if (F && (F.missing || []).length) problems.push('누락 필드: ' + F.missing.join(','));
+  for (const pair of [['orderer_name', '주문자명'], ['orderer_call', '연락처'], ['depositor_name', '입금자명']]) {
+    const e = document.querySelector('[name=' + pair[0] + ']');
+    if (e && !String(e.value || '').trim()) problems.push(pair[1] + ' 비어 있음');
+  }
+  if (cash && !cash.checked) problems.push('무통장입금 미선택');
+  // 입금계좌: 선택지가 하나뿐이면 입력기가 이미 골라 뒀다. 여러 개인데 미선택이면 사람이 고르게 한다.
+  const bankSel = document.querySelector('select[name=cash_idx]');
+  if (bankSel && cash && cash.checked) {
+    const real = Array.from(bankSel.options).filter((o) => o.value && o.value !== '0');
+    if ((!bankSel.value || bankSel.value === '0') && real.length !== 1) problems.push('입금계좌 미선택');
+  }
+  if (unchecked.length) problems.push('약관 미체크: ' + unchecked.join(','));
+  if (!totalNum) problems.push('결제예상금액 없음');
+  const want = Number(String(o.wantTotal || '').replace(/[^0-9]/g, '')) || 0;
+  if (want && totalNum && want !== totalNum) problems.push(`금액 ${totalNum} ≠ 목표 ${want}`);
+  if (btn.length !== 1) problems.push(`'결제하기' ${btn.length}개`);
+  if (window.__DPS_PAID) problems.push('이미 클릭한 결제입니다');
+  const out = {
+    ok: false, href: location.href.slice(0, 110), btn: btn.length ? txt(btn[0]) : '', total: total || '-',
+    pay: cash ? (cash.checked ? '무통장입금' : '신용카드 등 다른 수단') : '-', boxes: boxes.length, unchecked, problems,
+  };
+  if (o.preview || problems.length) return out;
+  window.__DPS_PAID = Date.now();
+  btn[0].click();
+  out.ok = true; out.clickedAt = window.__DPS_PAID; out.why = '클릭 완료';
   return out;
 }
 

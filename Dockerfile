@@ -1,4 +1,4 @@
-# 키이스케이프 예약 사격대 — 컨테이너 이미지 (linux/arm64·amd64)
+# 예약도우미 — 컨테이너 이미지 (linux/arm64·amd64)
 #
 #   docker build -t keyescape-ui .
 #   docker run --rm keyescape-ui --check        # 전제조건 검사만
@@ -27,13 +27,13 @@ COPY . /app
 
 # 빌드 게이트: 모든 mjs 문법검사 + 셸 문법검사 + 실행권한
 RUN sh -c 'set -e; \
-      for f in *.mjs ui/*.mjs; do [ -e "$f" ] && node --check "$f"; done; \
-      for f in setup.sh docker-entrypoint.sh docker-selftest.sh ui/*.sh; do [ -e "$f" ] && bash -n "$f" && chmod +x "$f"; done; \
-      chmod +x setup.sh docker-entrypoint.sh docker-selftest.sh 2>/dev/null || true'
+      for f in *.mjs ui/*.mjs scripts/docker/*.mjs; do [ -e "$f" ] && node --check "$f"; done; \
+      for f in setup.sh scripts/docker/docker-entrypoint.sh scripts/docker/docker-selftest.sh ui/*.sh; do [ -e "$f" ] && bash -n "$f" && chmod +x "$f"; done; \
+      chmod +x setup.sh scripts/docker/docker-entrypoint.sh scripts/docker/docker-selftest.sh 2>/dev/null || true'
 
 EXPOSE 8899
 HEALTHCHECK --interval=20s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -sf "http://127.0.0.1:${PORT}/api/log" >/dev/null || exit 1
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["/app/scripts/docker/docker-entrypoint.sh"]
 CMD ["serve"]

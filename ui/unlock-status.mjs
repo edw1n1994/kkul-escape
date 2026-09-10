@@ -24,7 +24,7 @@ const list = await fetch(`http://127.0.0.1:${PORT}/json/list`, { signal: AbortSi
 const pages = list.filter((t) => t.type === 'page' && /keyescape\.com/i.test(t.url));
 if (!pages.length) {
   out({ ok: true, cdp: 'OK', port: PORT, browser: ver.Browser, tabs: [], allUnlocked: true, count: 0,
-    note: 'keyescape 탭 없음 — 사격을 실행하면 열리고 그때 주입된다' }, 0);
+    note: 'keyescape 탭 없음 — 예약을 실행하면 열리고 그때 주입된다' }, 0);
 }
 
 /* 브라우저 레벨 WS 로 각 탭에 attach (주입 없이 evaluate 만) */

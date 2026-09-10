@@ -7,7 +7,7 @@
  */
 const PORT = Number(process.env.CDP_PORT || 9222);
 const HERE = new URL('.', import.meta.url).pathname;
-const EXT_PATH = HERE + 'ext';
+const EXT_PATH = new URL('../../ext/', import.meta.url).pathname;
 const TARGET_URL = process.argv[2] || process.env.KEYESCAPE_URL ||
   'https://www.keyescape.com/reservation1.php?zizum_num=18&theme_num=58&theme_info_num=35';
 

@@ -1,5 +1,7 @@
 # 컨텍스트를 작게: 실행에 필요한 코드만 복사한다
 node_modules
+dist
+.build-cache
 .git
 *.log
 *.out
@@ -21,3 +23,11 @@ server.err
 **/runs/
 **/*.log
 **/*.out
+
+# 컨테이너 실행과 무관한 문서·실험 도구·로컬 보관 자료
+.local
+tools
+docs
+desktop
+MEMORY.md
+**/.DS_Store

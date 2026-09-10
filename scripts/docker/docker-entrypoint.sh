@@ -2,22 +2,22 @@
 # 컨테이너 진입점.  인자:
 #   serve (기본)  : CDP 크롬(헤드리스) + UI 서버 기동 후 포그라운드 유지
 #   --check       : setup.sh --check 만 수행
-#   selftest      : docker-selftest.sh (설치 테스트 묶음)
+#   selftest      : scripts/docker/docker-selftest.sh (설치 테스트 묶음)
 #   sh|shell      : bash
 set -u
-HERE="$(cd "$(dirname "$0")" && pwd)"
+HERE="$(cd "$(dirname "$0")/../.." && pwd)"
 export CHROME_ARGS="${CHROME_ARGS:---headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage}"
 export KEYESCAPE_PROFILE="${KEYESCAPE_PROFILE:-/tmp/keyescape-chrome-profile}"
 
 case "${1:-serve}" in
   --check | check) exec bash "$HERE/setup.sh" --check ;;
-  selftest)        exec bash "$HERE/docker-selftest.sh" ;;
+  selftest)        exec bash "$HERE/scripts/docker/docker-selftest.sh" ;;
   sh | shell)      exec bash ;;
   serve)
     bash "$HERE/setup.sh" || echo "(setup.sh 가 일부 항목을 미충족으로 보고했습니다 — 위 로그 확인)"
     echo
     echo "컨테이너 안 준비 끝. 바깥에서 접속: http://localhost:${PORT:-8899}/  (-p 8898:8899 식의 포트맵 필요)"
-    echo "컨테이너 안 테스트:  docker exec <this> bash /app/docker-selftest.sh"
+    echo "컨테이너 안 테스트:  docker exec <this> bash /app/scripts/docker/docker-selftest.sh"
     echo "-----------------------------------------------------------------"
     PID="$(pgrep -f "$HERE/ui/server.mjs" | head -1)"
     if [ -z "$PID" ]; then echo 'UI 서버가 뜨지 않았습니다.'; tail -20 "$HERE/ui/server.out" 2>/dev/null; exit 1; fi

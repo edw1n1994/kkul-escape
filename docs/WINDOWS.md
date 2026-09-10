@@ -7,7 +7,7 @@
 ```bat
 setup.bat                       :: 검사 → 부족한 것 자동 구성 → 차단 해제 → UI 기동 → 화면 열기
 setup.bat -Check                :: 검사만
-setup.bat -Stop                 :: UI 서버/사격 프로세스만 종료
+setup.bat -Stop                 :: UI 서버/예약 프로세스만 종료
 setup.bat -Stop -Chrome         :: 격리 크롬까지 종료 (booking.naver 탭이 열려 있으면 거부)
 setup.bat -Shortcut             :: 바탕화면 바로가기
 setup.bat -Port 9000 -CdpPort 9333
@@ -32,7 +32,7 @@ Node 22 확인 → Chrome/Edge 경로 탐지 → `%TEMP%\keyescape-chrome-profil
 | `unlock.mjs` | ✅ 그대로 동작 | `node:fs/path/url` + `fetch` + `WebSocket` + CDP 만 사용. 경로도 `path.join` |
 | `ext/` (manifest + inject) | ✅ 그대로 | 확장이라 OS 무관. 오히려 Windows에선 이쪽이 제일 견고 |
 | `rescue.js` | ✅ 그대로 | 콘솔에 붙여넣는 코드 |
-| `unlock.sh` / `start.sh` | ❌ → **`setup.ps1`/`setup.bat` 으로 대체됨** | `#!/usr/bin/env bash`, `open -na "Google Chrome"`, `/Applications/Google Chrome.app/...`, `/tmp/...`, `pgrep/pkill` 등 mac 전용. Windows 는 `setup.ps1` 이 같은 역할 |
+| `unlock.sh` / `tools/legacy/start.sh` | ❌ → **`setup.ps1`/`setup.bat` 으로 대체됨** | `#!/usr/bin/env bash`, `open -na "Google Chrome"`, `/Applications/Google Chrome.app/...`, `/tmp/...`, `pgrep/pkill` 등 mac 전용. Windows 는 `setup.ps1` 이 같은 역할 |
 | `ui/ui.sh` / `ui/preflight.sh` | ❌ → **`setup.bat` 이 대체** | 같은 검사/기동 로직을 PowerShell 로 옮긴 것이 `setup.ps1`. 로직(server/runner/lib/unlock-status) 은 ✅ 그대로 |
 | `reserve-fast.mjs` 등 예약 스크립트 | ✅ 그대로 | 역시 Node + CDP |
 

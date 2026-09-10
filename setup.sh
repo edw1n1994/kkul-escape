@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 키이스케이프 예약 사격대 — 원샷 설치/기동 (macOS · Linux)
+# 예약도우미 — 원샷 설치/기동 (macOS · Linux)
 #
 #   ./setup.sh                 검사 → 부족한 것 자동 구성 → DevTools 해제 → UI 기동 → 브라우저 개방
 #   ./setup.sh --check         검사만 (아무것도 켜거나 바꾸지 않음)
-#   ./setup.sh --stop          UI 서버/사격 프로세스만 종료 (크롬은 유지)
+#   ./setup.sh --stop          UI 서버/예약 프로세스만 종료 (크롬은 유지)
 #   ./setup.sh --stop --chrome 크롬까지 종료 (booking.naver 탭이 있으면 거부 = 다른 예약 보호)
 #   ./setup.sh --with-node     Node 없고 brew 있으면 brew install node 시도
 #   PORT=9000 CDP_PORT=9333 ./setup.sh    포트 지정 (네이버 작업과 병렬 시 격리 권장)
@@ -40,7 +40,7 @@ BAD=0
 up() { curl -sf --max-time 3 "$1" >/dev/null 2>&1; }
 
 echo "==============================================="
-echo " 키이스케이프 예약 사격대 설치  (CDP:${CDP_PORT} / UI:${PORT})"
+echo " 예약도우미 설치  (CDP:${CDP_PORT} / UI:${PORT})"
 echo "==============================================="
 
 # ---------- 종료 모드 ----------
@@ -55,7 +55,7 @@ if [ "$STOP" = 1 ]; then
     pkill -f "keyescape-devtools-unlock/ui/$f" 2>/dev/null && hit=1
     pkill -f "^node $f\$" 2>/dev/null && hit=1   # 예전 방식(cd ui && node server.mjs) 호환
   done
-  [ "$hit" = 1 ] && ok 'UI 서버/사격 프로세스 종료' || info '종료할 UI 서버/사격 프로세스 없음'
+  [ "$hit" = 1 ] && ok 'UI 서버/예약 프로세스 종료' || info '종료할 UI 서버/예약 프로세스 없음'
   if [ "$KILLCHROME" = 1 ]; then
     if curl -sf --max-time 3 "$CDP/json/list" 2>/dev/null | grep -q 'booking\.naver\.com'; then
       bad "booking.naver 탭이 열려 있어 크롬 종료를 거부합니다 (진행 중인 예약 보호). 닫고 다시 실행하세요."
@@ -172,7 +172,7 @@ echo
 echo "==============================================="
 if [ "$BAD" = 0 ]; then
   printf ' \033[32m준비 완료\033[0m  →  %s\n' "$UIURL"
-  echo "   지점/테마/날짜/시간대를 고르고  [오픈 시각에 사격] → 브라우저에서 캡차+예약하기+결제"
+  echo "   지점/테마/날짜/시간대를 고르고  [오픈 시각에 예약] → 브라우저에서 캡차+예약하기+결제"
 else
   printf ' \033[33m일부 미충족\033[0m  위 ✘ 항목을 처리한 뒤 다시 ./setup.sh 를 실행하세요.'
   echo

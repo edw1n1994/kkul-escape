@@ -29,7 +29,7 @@ if ! curl -sf --max-time 3 "$UP" >/dev/null 2>&1; then
     --no-first-run \
     --no-default-browser-check \
     --disable-features=Translate \
-    "$URL" || { echo "크롬 실행 실패 (open 명령). 수동: ./start.sh"; exit 1; }
+    "$URL" || { echo "크롬 실행 실패 (open 명령). 수동: ./tools/legacy/start.sh"; exit 1; }
   for _ in $(seq 1 40); do
     curl -sf --max-time 1 "$UP" >/dev/null 2>&1 && break
     sleep 0.5

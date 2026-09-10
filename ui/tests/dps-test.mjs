@@ -7,13 +7,15 @@
  * ① 달력 파서 (fixture-dps-calendar.html = /booking/html_list.cm 실측 응답에서 잘어온 조각)
  *    · 완료(완) / 미오픈(예약불가) / 지난 날(예약 종료) 은 닫힘, 가(#8EC31F) 만 열림
  * ② 로그인 판정 우선순위 (알림 드로어 템플릿의 '로그아웃' 링크에 속으면 안 된다 — 실측 함정)
- * ③ 결제화면 입력기 (fixture-dps-payment.html) : 이름/연락처(3조각)/입금자명 + 무통장입금 선택, 결제 버튼 미클릭
+ * ③ 결제화면 입력기 (fixture-dps-payment.html) : 이름/연락처(3조각)/입금자명 + 무통장입금 선택 + 약관 전체동의
+ *    — 약관 자동 체크는 OPT.agreeAll 을 명시적으로 넘길 때만 켜진다(기본은 체크하지 않는다)
  * ④ '예약하기' 게이트 (fixture-dps-slot.html) : 로그아웃·좌표불일치·버튼 2개·중복클릭 거부, 통과 시 1회
+ * ⑤ '결제하기' 게이트 (dpsPay) : 주문코드 없는 화면/약관 미체크/카드 선택/금액 불일치/중복 클릭 모두 거부, 통과 시 1회
  */
 import fs from 'node:fs';
 import { cdp, sleep } from '../lib.mjs';
 import {
-  parseDpsDay, parseDpsLogin, dpsUrl, dpsFiller, dpsBook, dpsOrderRead, dpsSlotRead, dpsLoginRead,
+  parseDpsDay, parseDpsLogin, dpsUrl, dpsFiller, dpsBook, dpsPay, dpsOrderRead, dpsSlotRead, dpsLoginRead,
 } from '../dps.mjs';
 
 const argv = process.argv.slice(2);
@@ -60,7 +62,7 @@ const close = (tab) => fetch(`http://127.0.0.1:${PORT}/json/close/${tab.id}`).th
 
 try {
   /* ---------- ③ 결제화면 입력기 (실측 구조: 라벨 없음, orderer_name · depositor_name) ---------- */
-  const pay = await open(PAY.href);
+  const pay = await open(PAY.href + '?order_code=o2026000000000000');   // 결제화면 URL 은 실측과 같이 (dpsPay 게이트가 주문코드를 본다)
   const WANT = { name: '테스트유저', hp: '010-1234-5678', dep: '테스트입금자' };
   await pay.c.evaluate(`(() => { window.__FILL_ERR = '이전 실행 잔존 오류'; })()`);   // 실측에서 결과를 오염시킨 그 잔존값
   const filled = await pay.c.evaluate(`(async () => {
@@ -73,7 +75,8 @@ try {
   await t('무통장입금(pay_type=cash) 라디오로 선택했다', filled.radios.some((r) => r.checked && /무통장/.test(r.label)), JSON.stringify(filled.radios.map((r) => r.label + (r.checked ? '*' : ''))));
   await t('연락처 한 줄 입력란에는 010-0000-0000 그대로', filled.filled.hp === WANT.hp, filled.filled.hp);
   await t('요청사항(deliv_memo) 은 건드리지 않는다', (filled.inputs.find((i) => /deliv_memo/.test(i.key)) || {}).val === '', JSON.stringify(filled.inputs.filter((i) => /deliv_memo/.test(i.key))));
-  await t('약관 체크박스는 대신 체크하지 않는다', (await pay.c.evaluate("document.querySelector('[name=agree_cancel]').checked")) === false);
+  await t('입금계좌 선택지가 하나뿐이면 자동 선택한다', filled.bank === 'auto:1' && (filled.inputs.find((i) => /cash_idx/.test(i.key)) || {}).val === '1', `${filled.bank} / ${(filled.inputs.find((i) => /cash_idx/.test(i.key)) || {}).val}`);
+  await t('OPT.agreeAll 를 넘기지 않으면 약관을 대신 체크하지 않는다', (await pay.c.evaluate("document.querySelector('[name=agree_cancel]').checked")) === false);
   await t('결제하기 는 클릭하지 않았다', (await pay.c.evaluate('window.__PAY_COUNT || 0')) === 0);
 
   // 연락처가 3조각으로 나뉜 사이트(다른 아임웹 설정)에서도 동작해야 한다 — 실측 사이트는 한 줄이라 여기서 함께 검증
@@ -104,6 +107,50 @@ try {
     return { s: window.__DPS_FILL, raf: window.__RAF, hp: ['hp1', 'hp2', 'hp3'].map((n) => document.querySelector('[name=' + n + ']').value) };
   })()`);
   await t('배경 탭(rAF 정지)에서도 setTimeout 으로 끝까지 채운다', !!bg.s.at && !bg.s.err && bg.hp.join('') === '01012345678', JSON.stringify({ at: !!bg.s.at, hp: bg.hp.join('/'), err: bg.s.err, raf: bg.raf }));
+
+  /* ---------- ⑤ '결제하기' 게이트 — 약관 전체동의 자동 체크와 함께 실전 순서로 검증 ---------- */
+  const payGate = (o) => pay.c.evaluate(`(${dpsPay.toString()})(${JSON.stringify(o || {})})`);
+  const payCount = () => pay.c.evaluate('window.__PAY_COUNT || 0');
+
+  const noAgree = await payGate({ preview: true });
+  await t('약관이 미체크면 프리뷰에서 사유를 밝힌다', (noAgree.problems || []).some((p) => /약관 미체크/.test(p)) && (await payCount()) === 0, JSON.stringify(noAgree.problems));
+  await t('약관 미체크는 실행에서도 거부된다', (await payGate({})).ok === false && (await payCount()) === 0);
+  await t('약관 체크박스 상태를 밖으로 노출한다', (filled.checks || []).some((x) => /paymentAllCheck/.test(x.key)), JSON.stringify((filled.checks || []).map((x) => x.key)));
+
+  // 전체동의 자동 체크(러너가 agreeAll:true 를 넘긴 경우) — 전체동의 → 개별 약관 순, 선택 수신은 건드리지 않는다
+  const ag = await pay.c.evaluate(`(async () => {
+    (${dpsFiller.toString()})(${JSON.stringify(WANT)}, ${JSON.stringify({ agreeAll: true })});
+    for (let i = 0; i < 200; i++) { if (window.__DPS_FILL && (window.__DPS_FILL.at || window.__DPS_FILL.err)) break; await new Promise((r) => setTimeout(r, 25)); }
+    return {
+      s: window.__DPS_FILL,
+      boxes: Array.from(document.querySelectorAll('input[type=checkbox]')).map((e) => e.name + '=' + (e.checked ? '체크' : '미체크')),
+    };
+  })()`);
+  await t('약관 전체동의(paymentAllCheck) 를 먼저 누르고 개별 약관까지 체크한다', !!ag.s.agree && ag.s.agree.left.length === 0 && ag.s.agree.all === 'paymentAllCheck' && ag.s.agree.total >= 5, JSON.stringify(ag.s.agree));
+  await t('광고성 정보 수신은 대신 체크하지 않는다', ag.boxes.includes('agree_news=미체크'), JSON.stringify(ag.boxes));
+  await t('이름 없는 약관 체크박스도 주변 텍스트로 찾아 체크한다', ag.boxes.includes('agree_notice=체크'), JSON.stringify(ag.boxes));
+  await t('약관까지 끝나면 입력기가 완료로 발표된다', !!ag.s.at && !ag.s.err, ag.s.err || `ms=${Math.round(ag.s.ms)}`);
+
+  const gateOk = await payGate({ preview: true });
+  await t('필드/무통장/약관/금액이 맞으면 게이트가 통과한다', (gateOk.problems || []).length === 0 && gateOk.btn === '결제하기', JSON.stringify(gateOk.problems));
+  await t('프리뷰는 여전히 클릭하지 않는다', (await payCount()) === 0);
+  const goPay = await payGate({});
+  await t('게이트 통과 시 결제하기를 정확히 1회 클릭한다', goPay.ok === true && (await payCount()) === 1, JSON.stringify({ ok: goPay.ok, count: await payCount() }));
+  const payTwice = await payGate({});
+  await t('두 번째 호출은 중복 클릭하지 않는다', payTwice.ok === false && payTwice.problems.some((p) => /이미 클릭/.test(p)) && (await payCount()) === 1, JSON.stringify(payTwice.problems));
+
+  await pay.c.evaluate(`(() => { window.__DPS_PAID = null; document.querySelector('input[name=pay_type][value=card]').click(); })()`);
+  const onCard = await payGate({});
+  await t('신용카드가 선택되어 있으면 결제하기를 누르지 않는다', onCard.ok === false && onCard.problems.some((p) => /무통장입금 미선택/.test(p)) && (await payCount()) === 1, JSON.stringify(onCard.problems));
+  await pay.c.evaluate(`(() => { document.querySelector('input[name=pay_type][value=cash]').click(); })()`);
+  const wrongTotal = await payGate({ wantTotal: '1000' });
+  await t('목표 금액(--pay-total) 과 다르면 클릭하지 않는다', wrongTotal.ok === false && wrongTotal.problems.some((p) => /금액 56000 ≠ 목표 1000/.test(p)) && (await payCount()) === 1, JSON.stringify(wrongTotal.problems));
+
+  // 주문코드 없는 화면(슬롯/목록 등) 에서의 헛클릭 금지 — 게이트의 첫 번째 조건
+  const np = await open(PAY.href);
+  const noCode = await np.c.evaluate(`(${dpsPay.toString()})({})`);
+  await t('결제화면 URL(주문코드) 이 아니면 클릭하지 않는다', noCode.ok === false && noCode.problems.some((p) => /결제화면이 아닙니다/.test(p)) && (await np.c.evaluate('window.__PAY_COUNT || 0')) === 0, JSON.stringify(noCode.problems));
+  await close(np.tab);
   await close(pay.tab);
 
   /* ---------- ④ '예약하기' 게이트 ---------- */

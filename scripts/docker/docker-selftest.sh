@@ -2,11 +2,11 @@
 # ============================================================================
 #  컨테이너(또는 리눅스 VM) 안에서 도는 설치/스모크 테스트 묶음
 #    docker run --rm keyescape-ui selftest
-#    docker exec <running> bash /app/docker-selftest.sh
+#    docker exec <running> bash /app/scripts/docker/docker-selftest.sh
 #  읽기 전용 조회(dry)만 수행한다. reservation2 제출 / 예약 확정 동작은 절대 건드리지 않는다.
 # ============================================================================
 set -u
-HERE="$(cd "$(dirname "$0")" && pwd)"
+HERE="$(cd "$(dirname "$0")/../.." && pwd)"
 UI="$HERE/ui"
 PORT="${PORT:-8899}"
 CDP_PORT="${CDP_PORT:-9222}"
@@ -39,8 +39,8 @@ t 'Node >= 22'                'node -e "const m=+process.versions.node.split(\".
 t '전역 WebSocket (CDP 용도)'  'node -e "if(typeof WebSocket!==\"function\") process.exit(1)"'
 t '전역 fetch'                'node -e "if(typeof fetch!==\"function\") process.exit(1)"'
 t 'Chromium 바이너리'          'chromium --version || google-chrome --version'
-t 'mjs 전량 문법검사'          "cd $HERE && for f in *.mjs ui/*.mjs; do [ -e \"\$f\" ] && node --check \"\$f\" || exit 1; done"
-t '셸 스크립트 문법검사'        "bash -n $HERE/setup.sh && bash -n $UI/preflight.sh && bash -n $UI/ui.sh && bash -n $HERE/docker-entrypoint.sh"
+t 'mjs 전량 문법검사'          "cd $HERE && for f in *.mjs ui/*.mjs scripts/docker/*.mjs; do [ -e \"\$f\" ] && node --check \"\$f\" || exit 1; done"
+t '셸 스크립트 문법검사'        "bash -n $HERE/setup.sh && bash -n $UI/preflight.sh && bash -n $UI/ui.sh && bash -n $HERE/scripts/docker/docker-entrypoint.sh"
 t 'package.json 의존성 없음'    "test ! -f $HERE/package.json || ! grep -q '\"dependencies\"' $HERE/package.json"
 
 echo; echo "[B] 네트워크/CDP"
@@ -72,7 +72,7 @@ t 'GET /api/events (SSE)'     "curl -s --max-time 3 $U/api/events | head -c 60 |
 
 echo; echo "[D] DevTools 차단 해제 (실제 탭)"
 # 헤드리스 Chromium 은 /json/new?url= 을 무시한다 → 런너와 동일하게 createTarget + Page.navigate
-NEWID="$(cd $HERE && CDP_PORT=$CDP_PORT node docker-opentab.mjs '$URL' 2>/dev/null | tail -1)"
+NEWID="$(cd $HERE && CDP_PORT=$CDP_PORT node scripts/docker/docker-opentab.mjs '$URL' 2>/dev/null | tail -1)"
 ts 'CDP 탭 생성 + keyescape 이동' "test -n '$NEWID'"
 t 'unlock.mjs 주입(+reload)'  "cd $HERE && node unlock.mjs --quiet --reload '$URL'"
 # unlock-status.mjs 의 출력은 JSON.stringify(o, null, 2) — 즉 "key": true (공백 있음).
@@ -116,9 +116,9 @@ t 'SITES 에 keyescape/zeroworld 모두 등록' \
   "grep -q 'keyescape: {' $UI/sites.mjs && grep -q 'zeroworld: {' $UI/sites.mjs"
 t 'runner 가 --site 으로 사이트 분기' "grep -q 'siteOf(A.site)' $UI/runner.mjs && grep -q \"SITE.key === 'zeroworld'\" $UI/runner.mjs"
 t 'UI 에 사이트 전환 탭'          "grep -q 'id=\"siteTabs\"' $UI/public/index.html && grep -q 'function setSite' $UI/public/index.html"
-t '제로월드 자동 제출 없음 (폼 .submit()/사이트 fun_submit 호출 금지)' \
+t '제로월드 입력기는 폼을 직접 제출하지 않음' \
   "! grep -qE '\\.submit\\(|fun_submit' $UI/sites.mjs"
-t '제로월드 예약하기 버튼 클릭 없음 (활성화 class 만 건드림)' \
+t '제로월드 선택기는 예약하기를 누르지 않음 (제출 게이트와 분리)' \
   "! grep -qE 'rese-form__button.{0,60}\\.click\\(' $UI/sites.mjs"
 t '제로월드 탭을 사이트별로 구분'  "grep -q 'tabMatch' $UI/sites.mjs && grep -q 't.url.includes(s.tabMatch)' $UI/sites.mjs"
 ts 'API /api/env?site=zeroworld'  "has '$U/api/env?site=zeroworld' '\"site\":\"zeroworld\"'"
@@ -138,10 +138,11 @@ ts 'API 지점 목록에 김포본점이 없다' "! has '$U/api/env?site=zerowor
 
 echo; echo "[H] 캡차 통과 후 '예약하기' 자동 클릭 (opt-in — reCAPTCHA 체크는 여전히 사람이)"
 t 'lib.mjs 에 제출 함수 step2Submit 가 있다'        "grep -q 'export function step2Submit' $UI/lib.mjs"
-t '제출은 opt-in (--auto-submit), 기본값 off' \
-  "grep -q 'const AUTO_SUBMIT = !!A' $UI/runner.mjs"
-t '자동 제출은 키이스케이프에서만 (제로월드는 제출을 자동화하지 않음)' \
-  "grep -q \"SITE.key === 'keyescape'\" $UI/runner.mjs"
+t '제출은 opt-in (--auto-submit), 키이스케이프는 기본 off' \
+  "grep -qF \"['keyescape', 'zeroworld'].includes(SITE.key)\" $UI/runner.mjs"
+t '제로월드 제출은 실제 사용자 입력 확인 후에만' \
+  "node --test $UI/tests/zw-submit-test.mjs"
+
 t '토큰이 없으면 클릭을 거부한다 (사람 캡차 통과가 선행 조건)' \
   "grep -q 'reCAPTCHA 토큰 없음' $UI/lib.mjs"
 t 'reCAPTCHA API 를 실행/리셋하지 않는다 (execute/reset/render 금지)' \
@@ -192,7 +193,11 @@ t 'sites.mjs 에 단편선이 등록되어 있다'          "grep -q \"key: 'dps
 t 'façade(apiTimes) 가 dps 로 위임한다'          "grep -q \"k === 'dps'\" $UI/sites.mjs"
 t '러너에 단편선 분기가 있다'                    "grep -q '3-DPS' $UI/runner.mjs"
 t '로그아웃 상태에서는 클릭하지 않는다(게이트)'  "grep -q '로그인해야 예약할 수 있습니다' $UI/runner.mjs && grep -q '로그아웃 상태' $UI/dps.mjs"
-t '결제화면의 최종 결제 버튼은 누르지 않는다'    "grep -q '최종 결제' $UI/dps.mjs && ! grep -q '결제하기' $UI/dps.mjs"
+t '약관 전체동의를 자동 체크하고 광고 수신은 뺀다' "grep -q 'paymentAllCheck' $UI/dps.mjs && grep -q '광고' $UI/dps.mjs"
+t '최종 결제하기는 opt-in 게이트(dpsPay) 로만 누른다' "grep -q 'export function dpsPay' $UI/dps.mjs && grep -q 'pay-submit' $UI/runner.mjs"
+t '결제하기 자동 클릭은 화면 체크박스 전용이고 기본 off' \
+  "grep -q 'body.paySubmit' $UI/server.mjs && grep -q 'id=\"paybtn\"' $UI/public/index.html && ! grep -qE 'id=\"paybtn\"[^>]*checked' $UI/public/index.html"
+t '단편선은 예약하기 자동 클릭이 기본값이다(끄는 플래그 있다)' "grep -q 'no-auto-submit' $UI/runner.mjs && grep -q 'no-auto-submit' $UI/server.mjs"
 t '이름/연락처/입금자명 + 무통장입금을 채운다'   "grep -q deposit $UI/dps.mjs && grep -q 무통장입금 $UI/dps.mjs"
 t '서버에 /api/login 라우트가 있다'              "grep -q '/api/login' $UI/server.mjs"
 t 'UI 상단에 로그인 배지가 있다'                 "grep -q 'id=\"bLogin\"' $UI/public/index.html"
