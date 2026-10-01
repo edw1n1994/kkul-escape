@@ -28,8 +28,48 @@ import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, 
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8899);
-const CDP_PORT = Number(process.env.CDP_PORT || 9222);
+let CDP_PORT = Number(process.env.CDP_PORT || 9222);
 const MAXRUN_LOG = 800;
+const DESKTOP = process.env.DESKTOP_APP === '1';
+const browserPort = requested => DESKTOP ? CDP_PORT : Number(requested) || CDP_PORT;
+let browserConnection, browserSequence = 0;
+function ensureBrowser() {
+  if (!DESKTOP) return Promise.resolve(CDP_PORT);
+  if (!process.connected) return Promise.reject(new Error('앱 연결이 종료되었습니다. 예약도우미를 다시 실행해 주세요.'));
+  if (!browserConnection) {
+    browserConnection = new Promise((resolve, reject) => {
+      const id = ++browserSequence;
+      const finish = (error, port) => {
+        clearTimeout(timer); process.off('message', onMessage);
+        if (error) reject(error);
+        else { CDP_PORT = port; process.env.CDP_PORT = String(port); resolve(port); }
+      };
+      const onMessage = msg => {
+        if (msg?.type !== 'browser:ready' || msg.id !== id) return;
+        if (msg.error) return finish(new Error(msg.error));
+        if (!Number.isInteger(msg.port) || msg.port < 1 || msg.port > 65535) return finish(new Error('예약 브라우저 연결 정보를 확인하지 못했습니다.'));
+        finish(null, msg.port);
+      };
+      const timer = setTimeout(() => finish(new Error('예약 브라우저에 연결하지 못했습니다. 다시 연결을 누르거나 앱을 재시작해 주세요.')), 35000);
+      process.on('message', onMessage);
+      process.send({ type: 'browser:ensure', id }, err => { if (err) finish(err); });
+    }).finally(() => { browserConnection = null; });
+  }
+  return browserConnection;
+}
+let preparing = false, preparation = 0;
+async function startRun(body) {
+  if (run.child || preparing) return { ok: false, msg: '이미 예약이 실행 중이거나 준비 중입니다. 먼저 중단하세요.' };
+  preparing = true;
+  const attempt = ++preparation;
+  try {
+    if (!body.dry && (!body.watchOnly || body.site === 'naver')) await ensureBrowser();
+    if (attempt !== preparation || shuttingDown) return { ok: false, msg: '예약 준비가 취소되었습니다.' };
+    return startPreparedRun(body);
+  } catch (e) { return { ok: false, msg: e.message }; }
+  finally { preparing = false; }
+}
+
 
 /* ------- 실행은 동시 1개 (같은 브라우저 탭을 쓰기 때문에 병렬 금지) ------- */
 const run = { child: null, startedAt: 0, lines: [], exit: null, args: null, exitCode: null };
@@ -49,7 +89,7 @@ function pushLine(line) {
   fs.appendFile(path.join(HERE, 'runs.log'), `[${new Date().toISOString()}] ${line}\n`, () => {});
 }
 
-function startRun(body) {
+function startPreparedRun(body) {
   if (run.child) return { ok: false, msg: '이미 실행 중입니다. 먼저 [중단] 하세요.' };
   const site = siteOf(body.site).key;
   if (site === 'naver') {
@@ -65,7 +105,7 @@ function startRun(body) {
     '--site', site,
     '--zizum', String(body.zizum), '--theme', String(body.theme), '--info', String(body.info || body.theme),
     '--date', String(body.date), '--tname', String(body.tname || ''),
-    '--port', String(Number(body.cdp || CDP_PORT)),
+    '--port', String(browserPort(body.cdp)),
     '--deadline', String(Number(body.deadline || 60)),
     '--agrees', String(body.agrees || siteOf(site).agrees.join(',')),
   ];
@@ -82,6 +122,7 @@ function startRun(body) {
   // '예약하기' 자동 클릭: 키이스케이프는 opt-in, 단편선은 러너 기본값이 on — 화면에서 끈 경우만 플래그로 넘긴다
   if (body.autoSubmit) args.push('--auto-submit');
   if (site === 'naver' && body.autoSubmit === false) args.push('--no-auto-submit');
+  if (site === 'naver' && body.bankConfirm === true) args.push('--bank-confirm', '--bank-max', String(body.bankMax));
   if (site === 'dps' && body.autoSubmit === false) args.push('--no-auto-submit');
   if (site === 'dps' && body.agreeAll === false) args.push('--no-agree-all');   // 약관 전체동의 자동 체크(기본 on) 를 끄는 경우
   if (site === 'dps' && body.paySubmit) args.push('--pay-submit');              // 최종 '결제하기' — 화면 체크박스 전용, 기본 off
@@ -91,6 +132,7 @@ function startRun(body) {
   if (body.dry) args.push('--dry');
 
   run.lines = []; run.exit = null; run.startedAt = Date.now(); run.args = args.slice(1);
+  run.selection = Object.fromEntries(['site', 'zizum', 'theme', 'tname', 'date', 'times', 'openAt'].map(k => [k, body[k] || '']));
   const child = spawn(process.execPath, args, { cwd: HERE, env: process.env });
   run.child = child;
   let buf = '';
@@ -138,9 +180,12 @@ const server = http.createServer(async (req, res) => {
   const p = new URL(req.url, 'http://x').pathname;
   const a = qs(req.url);
   try {
-    if (p === '/' || p === '/index.html') {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      return res.end(fs.readFileSync(path.join(HERE, 'public', 'index.html')));
+    const assets = { '/': 'index.html', '/index.html': 'index.html', '/classic.html': 'classic.html', '/app.js': 'app.js', '/guided.js': 'guided.js', '/guided.css': 'guided.css' };
+    if (Object.hasOwn(assets, p)) {
+      const file = assets[p];
+      const type = file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html';
+      res.writeHead(200, { 'content-type': type + '; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(fs.readFileSync(path.join(HERE, 'public', file)));
     }
     if (p === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
@@ -153,21 +198,21 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/env') {
       const site = siteOf(a.site);
-      const list = await cdpList(Number(a.cdp) || CDP_PORT);
+      const list = await cdpList(browserPort(a.cdp));
       const cal = site.key === 'keyescape' ? await getCalendar(Number(a.info) || 34).catch(() => null) : null;
       return json(res, 200, {
-        site: site.key, siteLabel: site.label, captcha: site.captcha, siteNote: site.note,
+        desktop: DESKTOP, site: site.key, siteLabel: site.label, captcha: site.captcha, siteNote: site.note,
         deposit: !!site.deposit, loginRequired: site.login === 'required',
         sites: Object.values(SITES).map((s) => ({
           key: s.key, label: s.label, captcha: s.captcha,
           deposit: !!s.deposit, login: s.login === 'required' ? 'required' : 'none',
         })),
-        cdp: list ? 'OK' : 'DOWN', cdp_port: Number(a.cdp) || CDP_PORT,
+        cdp: list ? 'OK' : 'DOWN', cdp_port: browserPort(a.cdp),
         tabs: list ? list.filter((t) => t.type === 'page').map((t) => t.url.slice(0, 100)) : [],
         serverToday: await apiToday(site.key, a.info),
         serverMsg: cal?.data?.doc_time || '',
         branches: (await apiBranches(site.key)).map(([num, name]) => ({ num, name })),
-        running: !!run.child, exit: run.exit, pid: run.child?.pid || null,
+        running: !!run.child, preparing, selection: run.selection || null, exit: run.exit, pid: run.child?.pid || null,
       });
     }
     if (p === '/api/themes') {
@@ -242,17 +287,46 @@ const server = http.createServer(async (req, res) => {
       }
       return json(res, 200, { ok: true, site, serverToday: today, days: out });
     }
+    if (p === '/api/browser/reconnect' && req.method === 'POST') {
+      if (!DESKTOP) return json(res, 400, { ok: false, msg: '데스크톱 앱에서 사용할 수 있습니다.' });
+      if (run.child || preparing) return json(res, 409, { ok: false, msg: '예약을 먼저 중단한 뒤 다시 연결하세요.' });
+      const port = await ensureBrowser();
+      return json(res, 200, { ok: true, port });
+    }
+    if (p === '/api/browser/open' && req.method === 'POST') {
+      if (preparing) return json(res, 409, { ok: false, msg: '브라우저 준비가 끝난 뒤 다시 눌러 주세요.' });
+      // During a run, only focus an existing tab; never navigate or resubmit a form.
+      const focusOnly = !!run.child || a.focusOnly === '1';
+      if (!focusOnly) await ensureBrowser();
+      const port = browserPort(a.cdp), site = siteOf(a.site);
+      let tab;
+      if (site.key === 'naver') {
+        const product = naverProduct(a.zizum, a.theme);
+        const list = await cdpList(port);
+        tab = list?.find(t => t.type === 'page' && t.url.startsWith(product.url));
+        if (!tab && !focusOnly) tab = await openNaver(port, product);
+      } else {
+        const result = await siteTab(port, site.key, a.zizum, !focusOnly);
+        if (result.ok) tab = result.tab;
+      }
+      if (!tab) return json(res, 400, { ok: false, msg: '열린 예약창을 찾지 못했어요. 예약용 브라우저에서 확인해 주세요.' });
+      const c = cdp(tab.webSocketDebuggerUrl);
+      try { await c.ready; await c.send('Page.bringToFront'); }
+      finally { c.ws.close(); }
+      return json(res, 200, { ok: true });
+    }
     if (p === '/api/naver/open' && req.method === 'POST') {
-      if (run.child) return json(res, 409, { ok: false, msg: '예약 대기 중에는 새 로그인 창을 열 수 없습니다' });
-      await openNaver(Number(a.cdp) || CDP_PORT, naverProduct(a.zizum, a.theme));
+      if (run.child || preparing) return json(res, 409, { ok: false, msg: '예약 대기 중에는 새 로그인 창을 열 수 없습니다' });
+      await ensureBrowser();
+      await openNaver(browserPort(a.cdp), naverProduct(a.zizum, a.theme));
       return json(res, 200, { ok: true });
     }
     if (p === '/api/step2') {
       const site = siteOf(a.site);
-      if (site.key === 'naver') return json(res, 200, { site: 'naver', ...await naverStatus(Number(a.cdp) || CDP_PORT, a.zizum, a.theme, a.date, a.time) });
+      if (site.key === 'naver') return json(res, 200, { site: 'naver', ...await naverStatus(browserPort(a.cdp), a.zizum, a.theme, a.date, a.time) });
       const t = site.key === 'zeroworld'
-        ? await siteTab(Number(a.cdp) || CDP_PORT, 'zeroworld', a.zizum, false)
-        : await keTab(Number(a.cdp) || CDP_PORT, null, false);
+        ? await siteTab(browserPort(a.cdp), 'zeroworld', a.zizum, false)
+        : await keTab(browserPort(a.cdp), null, false);
       if (!t.ok) return json(res, 200, { ok: false, msg: t.msg });
       const c = cdp(t.tab.webSocketDebuggerUrl);
       try {
@@ -270,12 +344,14 @@ const server = http.createServer(async (req, res) => {
       if (site.login !== 'required') {
         return json(res, 200, { ok: true, loggedIn: null, required: false, site: site.key, msg: `${site.label} 은 로그인 없이 예약할 수 있습니다`, source: '사이트 정책' });
       }
-      const r = site.key === 'naver' ? await naverLogin(Number(a.cdp) || CDP_PORT, a.zizum, a.theme) : await dpsLogin(Number(a.cdp) || CDP_PORT);
+      const r = site.key === 'naver' ? await naverLogin(browserPort(a.cdp), a.zizum, a.theme) : await dpsLogin(browserPort(a.cdp));
       return json(res, 200, { ...r, required: true, site: site.key });
     }
-    if (p === '/api/log') return json(res, 200, { running: !!run.child, exit: run.exit, lines: run.lines });
+    if (p === '/api/log') return json(res, 200, { running: !!run.child, preparing, exit: run.exit, lines: run.lines });
     if (p === '/api/unlock') {
-      const port = String(Number(a.cdp) || CDP_PORT);
+      if (req.method === 'POST' && (run.child || preparing)) return json(res, 409, { ok: false, msg: '예약을 중단한 뒤 브라우저 복구를 실행해 주세요.' });
+      if (req.method === 'POST') await ensureBrowser();
+      const port = String(browserPort(a.cdp));
       if (req.method === 'POST') {
         // --reload: 이미 검은화면(wiped)으로 바뀐 탭은 재주입만으로는 못 돌아온다.
         //           새로고침해야 document_start 주입이 사이트 스크립트보다 먼저 돈다.
@@ -296,14 +372,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/run' && req.method === 'POST') {
       let b = ''; req.on('data', (d) => (b += d));
-      req.on('end', () => {
+      req.on('end', async () => {
         let body = {}; try { body = JSON.parse(b || '{}'); } catch {}
-        const r = startRun(body);
+        const r = await startRun(body);
         json(res, 200, r);
       });
       return;
     }
     if (p === '/api/stop' && req.method === 'POST') {
+      if (preparing) { preparation++; return json(res, 200, { ok: true, msg: '예약 준비를 취소했습니다.' }); }
       if (!run.child) return json(res, 200, { ok: false, msg: '실행 중인 작업 없음' });
       run.child.kill('SIGTERM');
       pushLine('[STOP] 사용자 중단 요청');

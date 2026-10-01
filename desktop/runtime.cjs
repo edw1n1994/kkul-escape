@@ -3,8 +3,8 @@ const path = require('node:path');
 
 // Explicit allowlist: never ship local.env, booking logs or screenshots.
 function copyRuntime(source, destination) {
-  const files = ['unlock.mjs', 'ext/inject.js', 'ui/public/index.html',
-    'ui/server.mjs', 'ui/runner.mjs', 'ui/lib.mjs', 'ui/sites.mjs', 'ui/dps.mjs', 'ui/zw-submit.mjs', 'ui/naver.mjs', 'ui/naver-browser.mjs', 'ui/naver-products.json', 'ui/unlock-status.mjs'];
+  const files = ['unlock.mjs', 'ext/inject.js', 'ui/public/index.html', 'ui/public/classic.html', 'ui/public/app.js', 'ui/public/guided.js', 'ui/public/guided.css',
+    'ui/server.mjs', 'ui/runner.mjs', 'ui/lib.mjs', 'ui/sites.mjs', 'ui/dps.mjs', 'ui/zw-submit.mjs', 'ui/recaptcha-click.mjs', 'ui/naver.mjs', 'ui/naver-browser.mjs', 'ui/naver-products.json', 'ui/unlock-status.mjs'];
   for (const file of files) {
     const target = path.join(destination, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });

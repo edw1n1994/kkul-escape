@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { cdp, cdpList, sleep } from './lib.mjs';
-import { naverPage, naverLoginRead } from './naver-browser.mjs';
+import { naverPage, naverLoginRead, naverBankPage } from './naver-browser.mjs';
 
 const validTime = t => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 export function validNaverDate(date) {
@@ -57,7 +57,11 @@ export function validateNaverRun(args) {
   const givenOpenAt = args['open-at'] || args.openAt;
   const openAt = givenOpenAt ? Date.parse(String(givenOpenAt)) : Date.parse(naverOpenInfo(args.zizum, args.theme, date).openAt);
   if (!Number.isFinite(openAt)) throw new Error('오픈 시각이 올바르지 않습니다');
-  return { product, date, time, openAt };
+  const bankConfirm = args.bankConfirm === true || args['bank-confirm'] === true;
+  const bankMax = Number(args.bankMax ?? args['bank-max']);
+  if (bankConfirm && (!Number.isSafeInteger(bankMax) || bankMax <= 0)) throw new Error('무통장입금 예약금 상한을 원 단위로 입력하세요');
+  if (bankConfirm && (args.autoSubmit === false || args['no-auto-submit'] || args['watch-only'] || args.watchOnly)) throw new Error('무통장입금 확정은 신청서 자동 진행을 켠 경우에만 사용할 수 있습니다');
+  return { product, date, time, openAt, bankConfirm, bankMax };
 }
 function productUrl(product, date) {
   const url = new URL(product.url);
@@ -99,12 +103,12 @@ export async function naverStatus(port, business, theme, date, time) {
 }
 
 // Injected transport makes the real scheduler testable without a live reservation.
-export async function driveNaver({ read, refresh, focus, deadline, auto = true, now = Date.now, nap = sleep, log = console.log }) {
+export async function driveNaver({ read, refresh, focus, deadline, auto = true, now = Date.now, nap = sleep, log = console.log, requestMessage = '[HANDOFF] 네이버 신청서 도착 — 브라우저에서 최종 확인·결제를 진행하세요' }) {
   let refreshedAt = now(), lastMsg = '', nextClicked = false;
   while (now() < deadline) {
     const state = await read('read');
     if (state?.blocked) throw new Error(state.msg);
-    if (state?.request) { log('[HANDOFF] 네이버 신청서 도착 — 브라우저에서 최종 확인·결제를 진행하세요'); return 'request'; }
+    if (state?.request) { log(requestMessage); return 'request'; }
     if (state?.nextRequested) nextClicked = true;
     if (nextClicked) { await nap(100); continue; } // Never refresh/retry after the next request.
     if (now() - refreshedAt >= 10000) { await refresh(); refreshedAt = now(); await nap(500); continue; }
@@ -126,7 +130,7 @@ export async function driveNaver({ read, refresh, focus, deadline, auto = true, 
   throw new Error(nextClicked ? '신청서 이동을 확인하지 못했습니다. 중복 클릭하지 않고 종료합니다. 브라우저를 확인하세요.' : '대기 시간 안에 목표 회차가 열리지 않았습니다');
 }
 export async function runNaver(args) {
-  const { product, date, time, openAt } = validateNaverRun(args);
+  const { product, date, time, openAt, bankConfirm, bankMax } = validateNaverRun(args);
   if (args.dry) { console.log('[PREVIEW] ' + JSON.stringify(naverPreview(args.zizum, args.theme, date))); return; }
   const port = Number(args.port || process.env.CDP_PORT || 9222);
   const waitMs = Math.min(600, Math.max(10, Number(args.deadline) || 60)) * 1000;
@@ -145,12 +149,42 @@ export async function runNaver(args) {
       await sleep(Math.min(1000, openAt - Date.now()));
     }
     await refresh();
-    await driveNaver({ read: async action => {
+    const arrival = await driveNaver({ read: async action => {
       try { return await read(action); } catch (e) {
         if (/context|navigat|Cannot find/i.test(e.message)) return { ok: false, uncertain: action === 'next', msg: '화면 전환 중' };
         throw e;
       }
     }, refresh, focus: () => timed(c.send('Page.bringToFront')), deadline: Date.now() + waitMs,
+      requestMessage: bankConfirm ? '[READY] 신청서 도착 — 무통장입금 예약 정보 확인 중' : undefined,
       auto: !args['no-auto-submit'] && !args['watch-only'] && !args['submit-preview'] });
+    if (bankConfirm && arrival === 'request' && !args['submit-preview']) {
+      await driveNaverBank({
+        read: action => timed(c.evaluate(`(${naverBankPage.toString()})(${JSON.stringify({ product, date, time, maxAmount: bankMax, action })})`)),
+        deadline: Date.now() + 15000,
+      });
+      await timed(c.send('Page.bringToFront'));
+    }
+
   } finally { c.ws.close(); }
+}
+
+// There is no refresh/retry after dispatching a final confirmation, including transport errors.
+export async function driveNaverBank({ read, deadline, now = Date.now, nap = sleep, log = console.log }) {
+  while (now() < deadline) {
+    const state = await read('read');
+    if (state?.blocked) throw new Error(state.msg);
+    if (!state?.ready) {
+      const selected = await read('select-bank');
+      if (selected?.blocked) throw new Error(selected.msg);
+      await nap(150); continue;
+    }
+    log('[PAYCHECK] 무통장입금 · 예약금 ' + state.amount + '원 · 상품/일시 확인됨');
+    let result;
+    try { result = await read('confirm'); }
+    catch { throw new Error('확정 요청 후 응답이 불명확합니다. 다시 클릭하지 않고 브라우저에서 확인하세요.'); }
+    if (!result?.clicked) throw new Error(result?.msg || '최종 확인 중 상태가 변경되어 중단했습니다.');
+    log('[HANDOFF] 무통장입금 확정을 1회 요청했습니다. 예약 결과와 입금 계좌·기한을 브라우저에서 확인하세요. 실제 송금은 직접 진행합니다.');
+    return result;
+  }
+  throw new Error('무통장입금 예약 정보를 확인하지 못했습니다. 확정 버튼을 누르지 않고 중단합니다.');
 }

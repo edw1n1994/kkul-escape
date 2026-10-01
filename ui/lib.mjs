@@ -79,7 +79,7 @@ export const cdpList = (port) => fetch(`http://127.0.0.1:${port}/json/list`, { s
 /** keyescape 탭을 찾는다. create=true 일 때만 없으면 신규 개설 (폴링용 읽기 호출은 false) */
 export async function keTab(port, url = 'https://www.keyescape.com/reservation1.php', create = true) {
   const list = await cdpList(port);
-  if (!list) return { ok: false, msg: `CDP(:${port}) 응답 없음 — ../unlock.sh 실행 필요` };
+  if (!list) return { ok: false, msg: process.env.DESKTOP_APP === '1' ? '예약용 브라우저 연결이 끊겼습니다. 상단의 예약 브라우저 다시 연결을 눌러 주세요.' : `CDP(:${port}) 응답 없음 — ../unlock.sh 실행 필요` };
   let tab = list.find((t) => t.type === 'page' && /keyescape/.test(t.url));
   if (!tab) {
     if (!create) return { ok: false, msg: 'keyescape 탭 없음 (예약을 실행하면 열립니다)' };
@@ -231,6 +231,7 @@ export const STEP2_READ = `(() => {
     name: val('name'), person: val('person'),
     mob: ['mobile1','mobile2','mobile3'].map((n) => val(n) || '').join('-'),
     agree: ['agree_1','agree_2','agree_3'].map((n) => n + '=' + (val(n) || '없음')).join(' '),
+    captchaClickRequested: !!window.__KE_RECAPTCHA_CLICKED,
     captcha: (() => {
       // grecaptcha.getResponse() 는 위젯이 아직 바인딩되지 않으면 예외를 던진다 → 토큰 textarea 를 먼저 읽는다
       const ta = document.querySelector('textarea[name="g-recaptcha-response"]');
@@ -252,7 +253,7 @@ export const STEP2_READ = `(() => {
  *   결제는 별개 폼 <form id="order_info" action="…/lib/kcp_pc/pc/pp_cli_hub.php"> 로 넘어간다.
  *   → 즉 이 클릭은 사이트가 준비한 제출 경로 자체를 누르는 것이고, form.submit() 우회가 아니다.
  *
- * reCAPTCHA 는 여기서 건드리지 않는다. 토큰이 '이미 존재' 하는지 읽기만 하고(사람이 클릭했다는 뜻),
+ * reCAPTCHA 는 여기서 건드리지 않는다. 토큰이 '이미 존재' 하는지 읽기만 하고(인증이 완료됐다는 뜻),
  * 없으면 클릭하지 않는다. 토큰을 생성/대입하는 코드는 이 저장소 어디에도 없다.
  *
  * 클릭 전 페이지 안에서 검증하고 하나라도 어긋나면 클릭하지 않는다:
@@ -317,7 +318,7 @@ export function step2Submit(opt) {
 
   if (opt.preview) { R.ok = problems.length === 0; R.why = '프리뷰(클릭 안 함)'; return R; }
 
-  if (!tokLen) { R.why = 'reCAPTCHA 토큰 없음 — 사람이 체크해야 합니다 (대신 클릭하지 않음)'; return R; }
+  if (!tokLen) { R.why = 'reCAPTCHA 토큰 없음 — 인증 완료를 기다립니다 (문제가 나오면 직접 풀어 주세요)'; return R; }
   if (problems.length) { R.why = '검증 실패: ' + problems.join(' / '); return R; }
   if (window.__SUBMITTED) { R.why = '이미 제출됨 (중복 클릭 금지)'; return R; }
   window.__SUBMITTED = Date.now();

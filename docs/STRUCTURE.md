@@ -28,6 +28,17 @@ npm run build:mac
 npm run build:win
 ```
 
+의존성 설치·로컬 테스트·빌드를 한 번에 실행하려면:
+
+```sh
+./scripts/build.sh       # Mac에서 macOS 두 종류 + Windows ZIP 빌드
+./scripts/build.sh mac   # macOS만
+./scripts/build.sh win   # Windows만
+```
+
+다른 작업 디렉터리에서도 스크립트 경로를 지정해 실행할 수 있습니다.
+결과는 `dist/`에 저장되며 GitHub에는 자동 업로드하지 않습니다.
+
 `npm test`의 앱 테스트는 임시 로컬 서버를 사용합니다. `test:browser`는 테스트용
 브라우저의 CDP 9222 포트가 필요합니다. 실제 사이트 예약 동작은 검사하지 않습니다.
 
@@ -41,3 +52,11 @@ Docker 진단은 실제 사이트에 조회 요청을 하므로 오프라인 검
 
 Windows 실행: [WINDOWS.md](WINDOWS.md) · 앱 배포: [desktop/README.md](../desktop/README.md)
 · 예약 엔진: [ui/README.md](../ui/README.md)
+
+## 앱 화면
+
+- `ui/public/index.html`, `guided.css`, `guided.js`: 기본 단계별 화면.
+- `ui/public/classic.html`: 기존 디자인 화면.
+- `ui/public/app.js`: 두 화면이 공유하는 조회·예약·자동입력 설정.
+- `ui/tests/guided-ui-test.mjs`: 로컬 API 픽스처로 네 사이트의 실행·중단·전환 검증.
+- `.local/backups/classic-1.0.1/`: 이전 디자인 ZIP과 원본 HTML, Git·배포 제외.

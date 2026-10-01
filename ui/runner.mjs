@@ -6,7 +6,7 @@
  *        --times "19:50,20:20" --tname "FILM BY EDDY" \
  *        [--open-at 2026-09-04T10:30:00+09:00] [--deadline 60] [--port 9222] \
  *        [--name 홍길동 --hp 010-0000-0000] [--agrees agree_1,agree_2] [--dry]
- *        [--auto-submit]  (키이스케이프) 캡차 통과 감지 후 '예약하기' 1회 클릭 (기본 off / reCAPTCHA 는 사람이 클릭)
+ *        [--auto-submit]  (키이스케이프) 캡차 통과 감지 후 '예약하기' 1회 클릭 (기본 off / 체크박스는 자동, 문제는 직접 해결)
  *        [--submit-preview]  제출 대상만 보고하고 아무것도 클릭하지 않음
  *
  *   --site dps  로 단편선(dpsnnn.com/reserve_g, 아임웹) 예약을 같은 흐름으로 쓴다.
@@ -27,7 +27,7 @@
  *       ③ Step1 UI 를 생략하고 reservation2.php 로 직접 POST (NEXT 와 동일 폼)
  *       ④ reservation2 열리면 주입된 입력기가 name/mobile/약관을 즉시 채움
  *          (인원은 사이트 기본값을 쓴다 -- 인자 없을 때 폼에 손을 대지 않는다)
- *       ⑤ reCAPTCHA '로봇이 아닙니다' 체크는 반드시 사람이 한다 (대신 클릭/풀이 하지 않는다)
+ *       ⑤ reCAPTCHA 체크박스는 1회 자동 클릭, 추가 문제는 사람이 해결 (--no-recaptcha-click 으로 끔)
  *       ⑥ --auto-submit 을 주면 사람이 캡차를 통과한 직후 '예약하기' 를 1회 클릭한다
  *          (좌표/약관/예약자/금액 검증 후, 토큰 없으면 클릭하지 않는다. 결제 화면으로 넘어간다)
  *
@@ -37,6 +37,7 @@
  * stdout 은 UI 가 파싱하기 쉬운 "키=값" / 평문 로그 라인. 진행상황은 접두어 [RUN]/[HIT]/[STEP2] 등.
  */
 import fs from 'node:fs';
+import { createRecaptchaClicker } from './recaptcha-click.mjs';
 import { runNaver } from './naver.mjs';
 import { zwArmHumanInput, zwSubmit } from './zw-submit.mjs';
 import { fileURLToPath } from 'node:url';
@@ -88,7 +89,7 @@ const DRY = !!A.dry;
 const WATCH_ONLY = !!A['watch-only'];
 const NO_OPEN = !!A['no-open'];
 const WATCH_POLL = Math.max(Number(A['poll-open'] || 300), 120);   // 감시 전용은 서버에 예의 있게 300ms
-// 키이스케이프: reCAPTCHA 는 어떤 경우에도 대신 누르지 않고, '예약하기' 는 --auto-submit opt-in (기본 off).
+// 키이스케이프: reCAPTCHA 체크박스만 1회 누르고 추가 문제는 사람이 해결하며, '예약하기' 는 --auto-submit opt-in (기본 off).
 // 단편선: 캡차가 없고 예약좌표(prod_idx/start_day) 를 화면에서 검증할 수 있으므로 '예약하기' 자동 클릭이 **기본 on**
 //   (--no-auto-submit 로 끄면 사람이 클릭하고 결제화면 채움만 자동이 된다). 약관 전체동의 자동 체크도 기본 on (--no-agree-all).
 // 최종 '결제하기' 는 돈이 나가는 동작이라 **항상 기본 off** — UI 체크박스(= --pay-submit) 로만 켜진다.
@@ -98,6 +99,7 @@ const AUTO_SUBMIT = !WATCH_ONLY && (SITE.key === 'dps'
   ? (PAY_SUBMIT || !A['no-auto-submit'])            // 결제까지 자동으론 예약하기 자동이 전제다
   : !!A['auto-submit'] && ['keyescape', 'zeroworld'].includes(SITE.key));
 const SUBMIT_PREVIEW = !!A['submit-preview'];
+const CAPTCHA_CLICK = SITE.key === 'keyescape' && !DRY && !WATCH_ONLY && !SUBMIT_PREVIEW && !A['no-recaptcha-click'];
 // 단편선은 '예약하기' 클릭(자동 또는 사람) 이후에 결제화면이 서버에서 렌더된다. 그 클릭/렌더를 기다리는 창(초).
 const HUMAN_WAIT = Math.max(30, Number(A['human-wait'] || (AUTO_SUBMIT ? (PAY_SUBMIT ? 90 : 60) : 240)));
 
@@ -470,7 +472,7 @@ if (st.blocked) {
   }
 }
 
-/* ---------- 5) reCAPTCHA 는 사람이 클릭 → 통과가 보이면 --auto-submit 일 때만 '예약하기' 1회 ---------- */
+/* ---------- 5) 체크박스 1회 클릭 → 문제는 사람이 해결 → 통과가 보이면 --auto-submit 일 때만 '예약하기' 1회 ---------- */
 const WANT = { zizum_num: Z, theme_num: T, theme_info_num: INFO, rev_days: D, theme_time_num: String(hit.num) };
 const runSubmit = (preview) => c
   .evaluate(`(${step2Submit.toString()})(${JSON.stringify({ want: WANT, agrees: AGREES, preview })})`)
@@ -532,9 +534,11 @@ if (SUBMIT_PREVIEW) {
   log(`[PREVIEW] ${gate} (아무것도 클릭하지 않았습니다)`);
   c.ws.close(); process.exit(0);
 }
-log(AUTO_SUBMIT
-  ? "[ARM] reCAPTCHA '로봇이 아닙니다' 를 클릭하면 직후 '예약하기' 를 자동 클릭합니다 (토큰이 없으면 절대 누르지 않음)"
-  : "[TODO] 1) reCAPTCHA '로봇이 아닙니다'  2) '예약하기' 클릭 — 이 두 동작은 직접 수행");
+const clickCheckbox = CAPTCHA_CLICK ? createRecaptchaClicker(c, WANT) : null;
+const checkboxUntil = Date.now() + 15000;
+let checkboxDone = !clickCheckbox;
+log(CAPTCHA_CLICK ? '[CAPTCHA] 체크박스를 1회 자동 클릭합니다. 문제가 나오면 직접 풀어 주세요.' : '[CAPTCHA] reCAPTCHA 인증을 직접 완료해 주세요.');
+log(AUTO_SUBMIT ? '[ARM] 인증 통과 후 예약 정보를 검증하고 예약하기를 1회 자동 클릭합니다.' : '[TODO] 인증이 끝나면 예약하기를 직접 눌러 주세요.');
 const until = Date.now() + 6 * 60000;
 let done = false;
 while (Date.now() < until && !done) {
@@ -559,7 +563,17 @@ while (Date.now() < until && !done) {
     else log("이제 '예약하기'만 클릭하세요");
   }
   else if (!s.onStep2) { log('[NAV] 페이지 이동 감지 — 브라우저에서 결과를 확인하세요'); done = true; }
-  else await sleep(AUTO_SUBMIT ? 200 : 700);
+  else {
+    if (!checkboxDone) {
+      if (Date.now() >= checkboxUntil) {
+        checkboxDone = true; log('[CAPTCHA] 체크박스를 확인하지 못했습니다. 직접 체크해 주세요.');
+      } else {
+        const result = await clickCheckbox();
+        if (result.state === 'clicked' || result.state === 'stop') { checkboxDone = true; log('[CAPTCHA] ' + result.reason); }
+      }
+    }
+    await sleep(AUTO_SUBMIT ? 200 : 700);
+  }
 }
 if (!done) log('[IDLE] 6분 내 클릭 없음. 준비 상태는 유지됩니다.');
 c.ws.close();

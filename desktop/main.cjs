@@ -25,7 +25,6 @@ async function browserPort() {
   const binary = browserCandidates(process.platform).find(file => fs.existsSync(file));
   if (!binary) throw new Error('Google Chrome 또는 Microsoft Edge를 설치한 후 앱을 다시 실행해 주세요.');
   fs.mkdirSync(profile, { recursive: true });
-  fs.rmSync(activeFile, { force: true });
   const args = [`--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'];
   const child = process.platform === 'darwin'
     ? spawn('/usr/bin/open', ['-n', '-a', binary.split('/Contents/')[0], '--args', ...args], { detached: true, stdio: 'ignore' })
@@ -33,7 +32,8 @@ async function browserPort() {
   let launchError;
   child.on('error', err => { launchError = err; });
   child.unref();
-  for (let i = 0; i < 80; i++) {
+  const deadline = Date.now() + 25000;
+  while (Date.now() < deadline) {
     if (launchError) throw launchError;
     const port = await existing();
     if (port) return port;
@@ -42,17 +42,31 @@ async function browserPort() {
   throw new Error('예약용 브라우저 연결 시간이 초과되었습니다. 앱을 다시 실행해 주세요.');
 }
 
+let connecting;
+function ensureBrowser() {
+  if (!connecting) connecting = browserPort().finally(() => { connecting = null; });
+  return connecting;
+}
+
 async function start() {
   const runtime = path.join(app.getPath('userData'), 'runtime');
   copyRuntime(app.isPackaged ? path.join(process.resourcesPath, 'runtime') : path.join(__dirname, '..'), runtime);
-  const cdpPort = smoke ? 1 : await browserPort();
+  const cdpPort = smoke ? 1 : await ensureBrowser();
   const log = fs.openSync(path.join(app.getPath('userData'), 'desktop.log'), 'a');
   backend = spawn(process.execPath, [path.join(runtime, 'ui/server.mjs')], {
     cwd: path.join(runtime, 'ui'),
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: smoke ? '0' : '18899', BIND: '127.0.0.1', CDP_PORT: String(cdpPort) },
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: smoke ? '0' : '18899', BIND: '127.0.0.1', CDP_PORT: String(cdpPort), DESKTOP_APP: '1' },
     stdio: ['ignore', log, log, 'ipc'], windowsHide: true,
   });
   fs.closeSync(log);
+  const serverChild = backend;
+  serverChild.on('message', async msg => {
+    if (msg?.type !== 'browser:ensure' || quitting) return;
+    let result;
+    try { result = { port: smoke ? 1 : await ensureBrowser() }; }
+    catch (err) { result = { error: err.message }; }
+    if (serverChild.connected) serverChild.send({ type: 'browser:ready', id: msg.id, ...result }, () => {});
+  });
   const port = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('앱 서버를 시작하지 못했습니다. desktop.log를 확인해 주세요.')), 15000);
     backend.once('error', err => { clearTimeout(timer); reject(err); });
@@ -80,8 +94,8 @@ async function start() {
   });
   await win.loadURL(origin);
   if (smoke) {
-    const result = await win.webContents.executeJavaScript(`(async () => { await setSite('naver'); return { title: document.title, inputs: document.querySelectorAll('input').length, nodeExposed: typeof require !== 'undefined', naverTheme: document.getElementById('theme').value }; })()`);
-    if (!result.title || !result.inputs || result.nodeExposed || result.naverTheme !== '6627331') throw new Error('화면 검증 실패: ' + JSON.stringify(result));
+    const result = await win.webContents.executeJavaScript(`(async () => { await setSite('naver'); const recovery = await fetch('/api/browser/reconnect', { method: 'POST' }).then(r => r.json()); return { browserRecovered: recovery.ok && recovery.port === 1, title: document.title, inputs: document.querySelectorAll('input').length, nodeExposed: typeof require !== 'undefined', naverTheme: document.getElementById('theme').value }; })()`);
+    if (!result.browserRecovered || !result.title || !result.inputs || result.nodeExposed || result.naverTheme !== '6627331') throw new Error('화면 검증 실패: ' + JSON.stringify(result));
     console.log('DESKTOP_SMOKE_OK ' + JSON.stringify(result));
     app.quit();
   } else { win.show(); }

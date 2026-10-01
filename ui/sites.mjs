@@ -28,7 +28,7 @@ export const SITES = {
     tabMatch: 'keyescape',
     branches: BRANCHES,
     buyerMode: 'mobile3', agrees: ['agree_1', 'agree_2'], captcha: 'reCAPTCHA',
-    needsInfo: true, note: 'reservation2 에서 약관 2개 + reCAPTCHA 확인 후 예약하기 (사용자 2클릭)',
+    needsInfo: true, note: '체크박스는 자동 클릭, 문제가 나오면 직접 해결. 자동예약을 켜면 인증 후 예약하기 진행',
   },
   zeroworld: {
     key: 'zeroworld', label: '제로월드', base: 'https://zeroworldkorea.com',
@@ -302,7 +302,7 @@ export async function siteTab(port, site, zizum, create = true) {
   const s = siteOf(site);
   const url = s.step1(zizum);
   const list = await cdpList(port);
-  if (!list) return { ok: false, msg: `CDP(:${port}) 응답 없음 — ../unlock.sh 실행 필요` };
+  if (!list) return { ok: false, msg: process.env.DESKTOP_APP === '1' ? '예약용 브라우저 연결이 끊겼습니다. 상단의 예약 브라우저 다시 연결을 눌러 주세요.' : `CDP(:${port}) 응답 없음 — ../unlock.sh 실행 필요` };
   let tab = list.find((t) => t.type === 'page' && t.url.includes(s.tabMatch));
   if (!tab) {
     if (!create) return { ok: false, msg: `${s.label} 탭 없음 (예약을 실행하면 열립니다)` };

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>예약도우미</title>
+<style>
+:root{--bg:#0e1116;--panel:#161b22;--line:#232b36;--tx:#e6edf3;--dim:#8b98a5;--ok:#2ea043;--bad:#f85149;--ac:#388bfd;--warn:#d29922}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,"Apple SD Gothic Neo",system-ui,sans-serif}
+header{display:flex;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);background:#11161d;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+h1{font-size:16px;margin:0 auto 0 0}
+.badge{padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line);background:#0b0f14;color:var(--dim)}
+.badge.ok{color:#7ee787;border-color:#1f4d2c}.badge.bad{color:#ff7b72;border-color:#5c2b2b}
+main{display:grid;grid-template-columns:minmax(430px,1fr) minmax(380px,1fr);gap:16px;padding:16px 18px;align-items:start}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+h2{font-size:13px;margin:0 0 10px;color:var(--dim);letter-spacing:.4px;text-transform:uppercase}
+label{display:block;font-size:12px;color:var(--dim);margin:0 0 4px}
+select,input{width:100%;padding:8px 10px;background:#0b0f14;color:var(--tx);border:1px solid var(--line);border-radius:7px;font:inherit}
+select:focus,input:focus{outline:none;border-color:var(--ac)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.static{padding:7px 9px;border:1px dashed var(--line);border-radius:7px;background:#0b0f14;color:var(--dim);font-size:13px;line-height:1.5}
+.tag{display:inline-block;font-weight:400;font-size:10px;color:var(--ac);border:1px solid var(--ac);border-radius:99px;padding:0 5px;margin-left:5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:7px;margin-top:6px}
+.chip{position:relative;padding:8px 4px;text-align:center;border:1px solid var(--line);border-radius:7px;background:#0b0f14;cursor:pointer;user-select:none;font-variant-numeric:tabular-nums}
+.chip small{display:block;font-size:10px;color:var(--dim)}
+.chip.open{border-color:#1f4d2c;background:#0f1f14}
+.chip.shut{opacity:.42;cursor:not-allowed;text-decoration:line-through}
+.chip.wait{border-style:dashed;border-color:#4b3a12;background:#181206;color:#e6c476}
+.chip.wait small{color:#a08443}
+.chip.past{opacity:.32;cursor:not-allowed;text-decoration:line-through}
+.chip.sel{border-color:var(--ac);background:#132c52;box-shadow:0 0 0 1px var(--ac) inset}
+.chip .rank{position:absolute;top:-6px;right:-4px;background:var(--ac);color:#fff;border-radius:99px;font-size:10px;padding:0 5px;line-height:15px}
+.dcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px;margin-top:6px}
+.dcell{padding:6px 2px;text-align:center;border:1px solid var(--line);border-radius:7px;background:#0b0f14;cursor:pointer;font-size:12px}
+.dcell.on{border-color:#1f4d2c;background:#0f1f14}
+.dcell.wait{border-style:dashed;border-color:#4b3a12;background:#160f04}
+.dcell.out{opacity:.45}
+.dcell.future{border-style:dashed;border-color:#4b3a12;background:#181206;color:#e6c476}
+.dcell.opened{opacity:.34;cursor:not-allowed}
+.dcell.sel{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+.dcell small{display:block;color:var(--dim);font-size:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button{padding:9px 15px;border-radius:7px;border:1px solid var(--line);background:#21262d;color:var(--tx);font:inherit;cursor:pointer}
+button:hover{border-color:#3d444d}
+button.pri{background:#1f6feb;border-color:#1f6feb;font-weight:600}
+button.fire{background:#da3633;border-color:#da3633;font-weight:700}
+button.gh{background:transparent}
+button:disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:12px;color:var(--dim);margin-top:8px}
+.hint b{color:var(--tx)}
+.grid>.hint,.dcols>.hint{grid-column:1/-1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.slot-empty{display:grid;gap:4px}
+.auto-reserve{display:inline-flex;gap:8px;align-items:center;margin:0;font-weight:600;cursor:pointer;white-space:nowrap}
+.auto-reserve input{width:16px;height:16px;flex:0 0 16px;margin:0;padding:0;accent-color:var(--ac)}
+pre#log{height:calc(100vh - 210px);min-height:320px;overflow:auto;margin:0;padding:10px;background:#080b0f;border:1px solid var(--line);border-radius:8px;font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+.k{color:#79c0ff}.g{color:#7ee787}.r{color:#ff7b72}.y{color:#e3b341}.d{color:#6e7681}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+th{color:var(--dim);font-weight:500}
+.step{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.step div{flex:1 1 120px;padding:8px;border:1px solid var(--line);border-radius:7px;background:#0b0f14;font-size:12px}
+.step b{display:block;color:var(--dim);font-size:10px;text-transform:uppercase}
+.tabs{display:inline-flex;gap:6px;margin:0 10px 0 2px;vertical-align:middle}
+.tab{padding:5px 13px;border:1px solid #33393f;border-radius:999px;background:#15181d;color:var(--dim);cursor:pointer;font-size:12px}
+.tab.on{background:#2b6cff;border-color:#2b6cff;color:#fff;font-weight:600}
+.chip.dis{opacity:.4;text-decoration:line-through;cursor:default}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 예약 도우미</h1><a href="/" data-design-link style="color:var(--ac)">새 화면</a>
+  <span class="tabs" id="siteTabs"></span>
+  <span class="badge" id="bCdp">CDP 확인 중</span>
+  <span class="badge" id="bToday">기준일 -</span>
+  <span class="badge" id="bRun">대기</span>
+  <span class="badge" id="bOpen">오픈까지 -</span>
+  <span class="badge" id="bLock" title="클릭하면 차단을 다시 해제합니다" onclick="lockFix()">DevTools -</span>
+  <span class="badge" id="bLogin" title="이 사이트의 로그인 상태입니다. 클릭하면 다시 확인합니다" onclick="checkLogin(true)">로그인 확인 중</span>
+  <button class="gh" id="reconnectBrowser" style="display:none" onclick="reconnectBrowser()">예약 브라우저 다시 연결</button>
+  <button class="gh" onclick="loadEnv()">새로고침</button>
+</header>
+
+<main>
+  <div>
+    <section>
+      <h2>1 · 지점 / 테마</h2>
+      <div class="row">
+        <div><label>지점</label><select id="zizum"></select></div>
+        <div><label>테마 (이름)</label><select id="theme"></select></div>
+      </div>
+      <button class="gh" id="naverOpen" style="display:none;margin-top:10px" onclick="openNaverWindow()">네이버 예약창 열기 / 로그인</button>
+      <div class="hint" id="themeMeta">테마를 고르면 난이도/장르/러닝타임이 나타납니다.</div>
+    </section>
+
+    <section>
+      <h2>2 · 날짜 <button class="gh" style="float:right;padding:3px 10px;font-size:12px" onclick="loadMatrix()">오픈 창 스캔</button></h2>
+      <div class="dcols" id="dates"><span class="hint">테마 선택 후 '오픈 창 스캔'을 누르면 날짜별 가능 슬롯 수가 나옵니다.</span></div>
+      <div class="row" style="margin-top:10px">
+        <div><label>직접 입력 (YYYY-MM-DD)</label><input id="dateInput" placeholder="2026-09-14"></div>
+        <div style="align-self:end"><button class="gh" onclick="pickDate(document.getElementById('dateInput').value)">이 날짜로</button></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3 · 시간대 <span style="text-transform:none;font-weight:400">(하나만 선택)</span>
+        <button class="gh" style="float:right;padding:3px 10px;font-size:12px" onclick="loadSlots()">다시 조회</button></h2>
+      <div class="grid" id="slots"><span class="hint">날짜를 선택하세요.</span></div>
+      <div class="hint" id="openHint">이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가).
+        <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.</div>
+    </section>
+
+    <section>
+      <div class="row">
+        <div id="nameWrap"><label>예약자 이름 (자동 입력될 값)</label><input id="pname" placeholder="브라우저에 저장되어 다시 채워집니다"></div>
+        <div id="hpWrap"><label>휴대폰 / 연락처 (자동 입력될 값)</label><input id="hp" placeholder="010-0000-0000"></div>
+        <div id="depWrap" style="display:none"><label>입금자명 (무통장입금)</label><input id="dep" placeholder="예약자명과 같아야 예약이 유지됩니다"></div>
+      </div>
+      <div class="hint" id="openInfo">날짜를 고르면 그 날짜가 예약 열리는 시각이 자동으로 세팅됩니다 <small>(지점별 오픈 시각 출처: reservation.php)</small>.</div>
+      <div id="subRow" style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <label class="auto-reserve">
+          <input type="checkbox" id="autosub" onchange="onAutoSub()"> <span id="autosubLabel">캡차 통과 후 '예약하기' 자동 클릭</span>
+        </label>
+        <label class="auto-reserve" id="payWrap" style="display:none" title="게이트를 통과했을 때만 1회 클릭합니다">
+          <input type="checkbox" id="paybtn" onchange="onPayBtn()"> 최종 '결제하기'까지 자동 클릭
+        </label>
+        <small class="hint" id="subHint"><b>reCAPTCHA '로봇이 아닙니다' 는 여전히 사람이 클릭</b>합니다. 토큰이 생긴 뒤 좌표/약관/예약자/금액을 검증하고 버튼을 <b>1회</b> 누릅니다(기본 off).</small>
+      </div>
+      <div class="btns">
+        <button class="pri" onclick="reserve()">🎯 예약</button>
+        <button onclick="fire(false, true)" title="디버거를 붙이지 않고 감시만 한다 — 사이트가 자동화를 차단해도 동작. 열리는 순간 소리 알림 + 예약 페이지를 엽니다">👀 감시만 (알림 + 창)</button>
+        <button onclick="fire(true)">🧪 슬롯 상태만 조회</button>
+        <button class="gh" onclick="stop()">중단</button>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2 id="step2Title">Step2 도착 상태 <button class="gh" style="float:right;padding:3px 10px;font-size:12px" onclick="loadStep2()">확인</button></h2>
+      <div class="step" id="step2"><div><b>waiting</b>아직 미도착</div></div>
+    </section>
+    <section style="padding-bottom:10px">
+      <h2>실시간 로그</h2>
+      <pre id="log"></pre>
+    </section>
+  </div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

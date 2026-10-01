@@ -59,14 +59,14 @@ t 'GET /api/slots'            "has '$U/api/slots?zizum=$ZIZUM&theme=$THEME&date=
 t 'GET /api/openinfo (오픈 시각 계산)' "has '$U/api/openinfo?zizum=$ZIZUM&theme=$THEME&info=$INFO&date=$DATE' '\"openAt\"'"
 t 'openinfo: 지점 오픈 시각 존재' "has '$U/api/openinfo?zizum=$ZIZUM&theme=$THEME&info=$INFO&date=$DATE' '\"openTimeSource\"'"
 t 'lib: 오픈 전 스캔 보정(windowSpan +1일) 탑재' "grep -q 'export function windowSpan' $UI/lib.mjs && grep -q 'windowSpan({' $UI/lib.mjs"
-t 'UI: 오픈 시각 자동 계산 코드 탑재' "curl -s --max-time 8 $U/ | grep -q 'loadOpenInfo'"
-t 'UI: 지금 예약 버튼 제거 / 예약 버튼' "curl -s --max-time 8 $U/ | grep -q '예약</button>' && ! curl -s --max-time 8 $U/ | grep -q '지금 예약'"
-t 'UI: 오픈시각/폴링/인원 입력란 없음 (기본값 고정)' "! grep -qE 'id=\"(openAt|deadline|person)\"' $UI/public/index.html && grep -q 'const DEF = {' $UI/public/index.html"
-t 'UI: 예약자 이름/휴대폰 폼 존재' "grep -q 'id=\"pname\"' $UI/public/index.html && grep -q 'id=\"hp\"' $UI/public/index.html && grep -q 'saveBuyer' $UI/public/index.html"
-t 'UI: 조건 요약 바 없음' "! grep -qE 'id=\"bar\"|updateBar' $UI/public/index.html"
-t 'UI: 시간대 단선택 (우선순위 목록 아님)' "grep -q 'function pickTime' $UI/public/index.html && ! grep -qE 'addAllWaiting|S\\.times' $UI/public/index.html"
-t 'UI: 이미 열린 날짜는 클릭 차단 (noOpen)' "grep -q 'noOpen()' $UI/public/index.html"
-t 'UI: 창 밖 날짜는 가까운 날짜 시간표로 미리 대기' "grep -q 'SLOT_PREVIEW' $UI/public/index.html"
+t 'UI: 오픈 시각 자동 계산 코드 탑재' "curl -s --max-time 8 $U/app.js | grep -q 'loadOpenInfo'"
+t 'UI: 지금 예약 버튼 제거 / 예약 버튼' "curl -s --max-time 8 $U/ | grep -q 'wizardNext' && ! curl -s --max-time 8 $U/ | grep -q '지금 예약'"
+t 'UI: 오픈시각/폴링/인원 입력란 없음 (기본값 고정)' "! grep -qE 'id=\"(openAt|deadline|person)\"' $UI/public/index.html && grep -q 'const DEF = {' $UI/public/app.js"
+t 'UI: 예약자 이름/휴대폰 폼 존재' "grep -q 'id=\"pname\"' $UI/public/index.html && grep -q 'id=\"hp\"' $UI/public/index.html && grep -q 'saveBuyer' $UI/public/app.js"
+t 'UI: 이전 조건 요약 바 없음' "! grep -qE 'id=\"bar\"|updateBar' $UI/public/index.html"
+t 'UI: 시간대 단선택 (우선순위 목록 아님)' "grep -q 'function pickTime' $UI/public/app.js && ! grep -qE 'addAllWaiting|S\\.times' $UI/public/index.html"
+t 'UI: 이미 열린 날짜는 클릭 차단 (noOpen)' "grep -q 'noOpen()' $UI/public/app.js"
+t 'UI: 창 밖 날짜는 가까운 날짜 시간표로 미리 대기' "grep -q 'SLOT_PREVIEW' $UI/public/app.js"
 
 t 'GET /api/events (SSE)'     "curl -s --max-time 3 $U/api/events | head -c 60 | grep -q 'ready\\|data\\|:'"
 
@@ -106,16 +106,16 @@ t 'runner 에 결제(KCP) 자동화 없음' \
 t 'setup.sh --stop 이 느슨한 패턴으로 남의 프로세스를 잡지 않음' \
   "! grep -qE \"pkill -f '?(server|runner)[.]mjs\" $HERE/setup.sh"
 t 'UI JS: Response 에 .then/.catch 붙이는 실수 없음' \
-  "! grep -qE 'await \\(await fetch\\(.*\\)\\)\\.(then|catch)' $UI/public/index.html"
-t 'UI 인라인 JS 문법 통과 (node --check)' \
-  "awk '/<script>/{f=1;next} /<\\/script>/{f=0} f' $UI/public/index.html > /tmp/ui-inline.js && node --check /tmp/ui-inline.js"
+  "! grep -qE 'await \\(await fetch\\(.*\\)\\)\\.(then|catch)' $UI/public/app.js"
+t 'UI 공용·단계별 JS 문법 통과 (node --check)' \
+  "node --check $UI/public/app.js && node --check $UI/public/guided.js"
 
 echo; echo "[G] 제로월드 (같은 화면의 두 번째 사이트)"
 t 'sites.mjs 문법 통과'          "node --check $UI/sites.mjs"
 t 'SITES 에 keyescape/zeroworld 모두 등록' \
   "grep -q 'keyescape: {' $UI/sites.mjs && grep -q 'zeroworld: {' $UI/sites.mjs"
 t 'runner 가 --site 으로 사이트 분기' "grep -q 'siteOf(A.site)' $UI/runner.mjs && grep -q \"SITE.key === 'zeroworld'\" $UI/runner.mjs"
-t 'UI 에 사이트 전환 탭'          "grep -q 'id=\"siteTabs\"' $UI/public/index.html && grep -q 'function setSite' $UI/public/index.html"
+t 'UI 에 사이트 전환 탭'          "grep -q 'id=\"siteTabs\"' $UI/public/index.html && grep -q 'function setSite' $UI/public/app.js"
 t '제로월드 입력기는 폼을 직접 제출하지 않음' \
   "! grep -qE '\\.submit\\(|fun_submit' $UI/sites.mjs"
 t '제로월드 선택기는 예약하기를 누르지 않음 (제출 게이트와 분리)' \
@@ -136,7 +136,7 @@ t '지점 목록을 코드로 걸러낸다 (내장 표 = 강남/홍대)' "! grep
 ts 'API 지점 목록에 김포본점이 없다' "! has '$U/api/env?site=zeroworld' '김포'"
 
 
-echo; echo "[H] 캡차 통과 후 '예약하기' 자동 클릭 (opt-in — reCAPTCHA 체크는 여전히 사람이)"
+echo; echo "[H] 캡차 통과 후 '예약하기' 자동 클릭 (opt-in — 체크박스 자동 클릭 / 문제는 직접 해결)"
 t 'lib.mjs 에 제출 함수 step2Submit 가 있다'        "grep -q 'export function step2Submit' $UI/lib.mjs"
 t '제출은 opt-in (--auto-submit), 키이스케이프는 기본 off' \
   "grep -qF \"['keyescape', 'zeroworld'].includes(SITE.key)\" $UI/runner.mjs"
@@ -146,9 +146,9 @@ t '제로월드 제출은 실제 사용자 입력 확인 후에만' \
 t '토큰이 없으면 클릭을 거부한다 (사람 캡차 통과가 선행 조건)' \
   "grep -q 'reCAPTCHA 토큰 없음' $UI/lib.mjs"
 t 'reCAPTCHA API 를 실행/리셋하지 않는다 (execute/reset/render 금지)' \
-  "! grep -qE 'grecaptcha\\.(execute|reset|render|ready)' $UI/lib.mjs $UI/runner.mjs $UI/sites.mjs"
+  "! grep -qE 'grecaptcha\\.(execute|reset|render|ready)' $UI/lib.mjs $UI/runner.mjs $UI/sites.mjs $UI/recaptcha-click.mjs"
 t 'g-recaptcha-response 에 값을 대입하지 않는다 (토큰 생성 금지)' \
-  "! grep -qE 'g-recaptcha-response.{0,40}value *=' $UI/lib.mjs $UI/runner.mjs $UI/sites.mjs"
+  "! grep -qE 'g-recaptcha-response.{0,40}value *=' $UI/lib.mjs $UI/runner.mjs $UI/sites.mjs $UI/recaptcha-click.mjs"
 t '클릭 전에 예약좌표/약관/예약자/금액을 검증한다' \
   "grep -q '예약좌표 불일치' $UI/lib.mjs && grep -q '약관 미체크' $UI/lib.mjs && grep -q '상품명/금액 없음' $UI/lib.mjs"
 t '상품명/금액은 결제 폼(order_info) 밖에서도 찾는다 (실측에서 막혔던 회귀)' \
@@ -159,7 +159,7 @@ t '중복 클릭 방지 (문서당 1회 플래그)'                "grep -q '__S
 t '서버가 --auto-submit 을 러너로 전달한다'          "grep -q -- \"'--auto-submit'\" $UI/server.mjs"
 t 'UI 체크박스가 있고 기본 미체크' \
   "grep -q 'id=\"autosub\"' $UI/public/index.html && ! grep -qE 'id=\"autosub\"[^>]*checked' $UI/public/index.html"
-t 'UI 문구가 캡차는 사람이 클릭한다고 밝힌다'        "grep -q '여전히 사람이 클릭' $UI/public/index.html"
+t 'UI 문구가 체크박스 자동 클릭과 수동 문제 풀이를 밝힌다' "grep -q '체크박스는 자동으로 1회 클릭' $UI/public/app.js && grep -q '직접 풀어' $UI/public/app.js"
 t 'step2Submit 단위 테스트/픽스처가 저장소에 있다' \
   "test -f $UI/tests/submit-test.mjs && test -f $UI/tests/fixture-step2.html"
 t 'step2Submit 테스트 문법 통과'                     "node --check $UI/tests/submit-test.mjs"
@@ -182,7 +182,7 @@ t '감시 전용은 사람 핸드오프만 한다 (알림 + 창 열기, 클릭 �
   "grep -q 'HANDOFF' $UI/runner.mjs && grep -q \"'open'\" $UI/runner.mjs"
 t '서버가 --watch-only 를 전달한다'                 "grep -q -- \"'--watch-only'\" $UI/server.mjs"
 t 'UI 에 감시만 버튼이 있다'                        "grep -q '감시만' $UI/public/index.html"
-t 'UI 로그가 [BLOCK] 을 빨강으로 표시한다'          "grep -q 'BLOCK|ABORT' $UI/public/index.html"
+t 'UI 로그가 [BLOCK] 을 빨강으로 표시한다'          "grep -q 'BLOCK|ABORT' $UI/public/app.js"
 t '차단 화면 픽스처가 있다'                         "test -f $UI/tests/fixture-blocked.html"
 ts 'RUNNER 감시 전용 실행 (디버거 없이 HIT/MISS 까지)' \
   "cd $UI && timeout 60 node runner.mjs --zizum $ZIZUM --theme $THEME --info $INFO --date $DATE --times '10:45' --deadline 6 --watch-only --no-open | grep -qE '\\[WATCH\\]|\\[MISS\\]'"
