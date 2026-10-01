@@ -9,12 +9,16 @@
  *   단편선(dps)   아임웹 booking 위젯 — POST /booking/html_list.cm(월간 달력 HTML) + get_prod_list.cm(슬롯 JSON)
  *                 reserve_g?idx=…&day=… 슬롯 페이지 → 로그인 필수 '예약하기'(add_order.cm) → /shop_payment/
  *                 (이름/연락처/입금자명 + 결제수단 무통장입금). 디테일은 ./dps.mjs 주석에 실측 그대로 적어두었다.
+ *   토끼굴(rhe)   자체 Laravel 사이트 — GET /reservation?branch&theme&date HTML 한 장에 지점/테마/시간 표
+ *                 '예약가능' 버튼의 hiddenData JSON 을 사이트가 #eveSubmitForm 에 채워 POST /reservation/create
+ *                 → 신청서(이름/연락처/인원/가상계좌/약관). 디테일은 ./rhe.mjs 주석에 실측 그대로 적어두었다.
  *
  * 화면이 다른 만큼 "지점/테마/슬롯/오픈시각" 을 사이트별 어댑터로 감춘다.
  */
 import { getTimes as keGetTimes, getCalendar as keGetCalendar, openInfo as keOpenInfo, cdpList, BRANCHES, LEAD_DAYS_FALLBACK, sleep } from './lib.mjs';
 import { DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth } from './dps.mjs';
 import { naverProducts, naverPreview, naverOpenInfo, naverToday } from './naver.mjs';
+import { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday } from './rhe.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +58,17 @@ export const SITES = {
     key: 'naver', label: '네이버 예약', base: 'https://booking.naver.com',
     buyerMode: 'account', agrees: [], captcha: '필요 시 직접 인증', needsInfo: false,
     login: 'required', note: '네이버 계정으로 예약합니다. 신청서까지 자동 진행하고 최종 확인·결제는 직접 합니다.',
+  },
+  rhe: {
+    key: 'rhe', label: RHE.label, base: RHE.base,
+    step1: (z) => rheUrl({ branch: z || RHE.branch }),
+    tabMatch: 'rabbitholeescape',
+    // 자체 Laravel 사이트. 지점은 홍대점 1개, 테마 2종이 예약 화면의 select 에서 실시간으로 읽힌다.
+    branches: RHE.branches,
+    buyerMode: 'phone1line', agrees: [], captcha: '없음',
+    needsInfo: false, deposit: false,
+    openTime: RHE.openTime, leadDays: RHE.leadDays,
+    note: "로그인·자동등록방지 없음. 시간 버튼을 누르면 신청서가 열리고 이름/연락처/인원/결제수단/약관이 자동 입력됩니다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 직접 클릭합니다",
   },
 };
 export const siteOf = (k) => SITES[String(k || 'keyescape').toLowerCase()] || SITES.keyescape;
@@ -258,6 +273,7 @@ export async function apiTimes(site, zizum, theme, date) {
   if (k === 'naver') return naverPreview(zizum, theme, date);
   if (k === 'zeroworld') return await zwTimes(zizum, theme, date);
   if (k === 'dps') return await dpsTimes(date);                 // 달력 한 장에 그 달 전체 슬롯이 있다
+  if (k === 'rhe') return await rheTimes({ branch: zizum, theme, date });
   return await keGetTimes(zizum, theme, date);
 }
 export async function apiOpenInfo(site, { zizum, theme, info, date }) {
@@ -265,6 +281,7 @@ export async function apiOpenInfo(site, { zizum, theme, info, date }) {
   if (k === 'naver') return naverOpenInfo(zizum, theme, date);
   if (k === 'zeroworld') return await zwOpenInfo({ zizum, theme, date });
   if (k === 'dps') return await dpsOpenInfo({ date });
+  if (k === 'rhe') return await rheOpenInfo({ branch: zizum, date });
   return await keOpenInfo({ zizum, theme, info, date });
 }
 export async function apiBranches(site) {
@@ -272,13 +289,15 @@ export async function apiBranches(site) {
   if (k === 'naver') return [...new Map(naverProducts().map(p => [p.business, p.branch])).entries()];
   if (k === 'zeroworld') return await zwBranches();
   if (k === 'dps') return SITES.dps.branches;
+  if (k === 'rhe') return RHE.branches;
   return SITES.keyescape.branches;
 }
-/** 테마(=슬롯 상품) 목록: 키이스케이프/제로월드는 지점별, 단편선은 강남 이야기×시간대 18종 */
+/** 테마(=슬롯 상품) 목록: 키이스케이프/제로월드는 지점별, 단편선은 강남 이야기×시간대 18종, 토끼굴은 테마 2종 */
 export async function apiThemes(site, zizum) {
   const k = siteOf(site).key;
   if (k === 'naver') return { ok: true, themes: naverProducts().filter(p => p.business === String(zizum)) };
   if (k === 'zeroworld') return await zwThemes(zizum);
+  if (k === 'rhe') return await rheThemes(zizum);
   if (k === 'dps') {
     const themes = await dpsProducts().catch(() => []);
     return { ok: themes.length > 0, themes, msg: themes.length ? '' : 'get_prod_list.cm 이 빈 목록을 주었습니다' };
@@ -289,12 +308,14 @@ export async function apiToday(site, info) {
   const k = siteOf(site).key;
   if (k === 'naver') return naverToday();
   if (k === 'dps') return dpsToday();
+  if (k === 'rhe') return rheToday();
   if (k === 'zeroworld') return zwDate(0);
   const cal = await keGetCalendar(Number(info) || 34).catch(() => null);
   return cal?.calendarData?.today || zwDate(0);
 }
 export { LEAD_DAYS_FALLBACK, DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth };
 export { dpsFiller, dpsBook, dpsPay, dpsSlotRead, dpsOrderRead, dpsLoginRead } from './dps.mjs';
+export { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, rheNoteWindow, rheHtml, isRhePage, parseRhePage, rheFiller, rhePick, rheSlotRead, rheCreateRead } from './rhe.mjs';
 
 /* ===================== 브라우저 측 (CDP 로 문자열화해 주입) ===================== */
 /** 사이트 탭을 찾거나 연다 (제로월드는 zizum 이 url 에 들어간다) */

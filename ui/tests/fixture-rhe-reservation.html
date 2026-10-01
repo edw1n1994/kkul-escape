@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<!-- 방탈출 토끼굴 /reservation 실측 HTML 오프라인 픽스처 (2026-10-01 실측 구조, 개인값·실서버 토큰 없음) -->
+<html lang="ko">
+<head>
+  <meta name="csrf-token" id="csrf" content="FIXTURE-CSRF-TOKEN" />
+  <title> 방탈출 토끼굴 : 예약하기 </title>
+</head>
+<body>
+<article class="wrap" id="wrap">
+  <div class="res-wrap oh" id="list">
+    <h1 class="res-title">BOOKING INFOMATION</h1>
+    <div class="container size1">
+      <form class="search cba" action="https://www.rabbitholeescape.co.kr/reservation#list">
+        <div class="search-select cba"><span class="bsbb">지점</span><label class="bsbb arrow-before">
+          <select class="bsbb" name="branch" value="" onChange="this.form.submit()">
+            <option value="1">홍대점</option>
+          </select>
+        </label></div>
+        <div class="search-select cba"><span class="bsbb">테마</span><label class="bsbb arrow-before">
+          <select class="bsbb" name="theme" value="" onChange="this.form.submit()">
+            <option value="">전체</option>
+            <option value="5">행운만물상</option>
+            <option value="4">두껍아 두껍아 헌집줄게 새집다오</option>
+          </select>
+        </label></div>
+        <div class="search-date cba"><span class="bsbb">예약날짜</span><label class="bsbb arrow-before">
+          <input class="bsbb mask-date" type="text" name="date" value="2030-01-07" onChange="this.form.submit()">
+        </label></div>
+      </form>
+    </div>
+
+    <div>
+      <section class="res-item">
+        <div class="container size1 cba">
+          <div class="res-item-info">
+            <h2>행운만물상</h2>
+            <table>
+              <tr><th>장르</th><td>동화 / 모노룸</td></tr>
+              <tr><th>인원</th><td>2~4</td></tr>
+              <tr><th>시간</th><td>70min</td></tr>
+              <tr><th>난이도</th><td><div class="res-item-step size4 cba"> <span></span> <span></span> </div></td></tr>
+            </table>
+            <ul class="res-times">
+              <li><div class="res-times-btn"><button class="active1 eveReservationButton" type="button">
+                <label>예약가능</label>
+                <span>11:20</span>
+                <div class="dn eveHiddenData">{&quot;branch&quot;:1,&quot;theme&quot;:5,&quot;date&quot;:&quot;2030-01-07&quot;,&quot;time&quot;:&quot;11:20&quot;}</div>
+              </button></div></li>
+              <li><div class="res-times-btn"><button type="button">
+                <label>예약불가</label>
+                <span>12:50</span>
+              </button></div></li>
+              <li><div class="res-times-btn"><button class="active1 eveReservationButton" type="button">
+                <label>예약가능</label>
+                <span>14:20</span>
+                <div class="dn eveHiddenData">{&quot;branch&quot;:1,&quot;theme&quot;:5,&quot;date&quot;:&quot;2030-01-07&quot;,&quot;time&quot;:&quot;14:20&quot;}</div>
+              </button></div></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="res-item">
+        <div class="container size1 cba">
+          <div class="res-item-info">
+            <h2>두껍아 두껍아 헌집줄게 새집다오</h2>
+            <table>
+              <tr><th>장르</th><td>드라마 미스터리</td></tr>
+              <tr><th>인원</th><td>2~6</td></tr>
+              <tr><th>시간</th><td>75min</td></tr>
+              <tr><th>난이도</th><td><div class="res-item-step size3 cba"> <span></span> </div></td></tr>
+            </table>
+            <ul class="res-times">
+              <li><div class="res-times-btn"><button class="active1 eveReservationButton" type="button">
+                <label>예약가능</label>
+                <span>11:35</span>
+                <div class="dn eveHiddenData">{&quot;branch&quot;:1,&quot;theme&quot;:4,&quot;date&quot;:&quot;2030-01-07&quot;,&quot;time&quot;:&quot;11:35&quot;}</div>
+              </button></div></li>
+              <li><div class="res-times-btn"><button type="button">
+                <label>예약불가</label>
+                <span>13:05</span>
+              </button></div></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 시간 버튼 클릭 시 사이트가 좌표를 채우고 submit 하는 폼 (action 의 #list 는 실측 그대로) -->
+  <form çlass="dn" method="post" action="https://www.rabbitholeescape.co.kr/reservation/create#list" id="eveSubmitForm">
+    <input type="hidden" name="branch" />
+    <input type="hidden" name="theme" />
+    <input type="hidden" name="date" />
+    <input type="hidden" name="time" />
+    <input type="hidden" name="_token" value="FIXTURE-CSRF-TOKEN">
+  </form>
+</article>
+</body>
+</html>

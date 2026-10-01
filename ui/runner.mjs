@@ -22,6 +22,13 @@
  *     제로월드는 테마번호가 info 를 겸하고 예약 페이지가 한 장이라 reservation2 흐름이 없다.
  *     → 히트 시 같은 페이지에서 날짜/테마/시간을 확정하고 이미지 캡차만 사용자에게 남긴다.
  *
+ *   --site rhe   로 방탈출 토끼굴(rabbitholeescape.co.kr) 예약을 같은 흐름으로 쓴다.
+ *     예약 화면의 '예약가능' 시간 버튼(hiddenData 좌표 4개 일치 확인) 을 히트 순간 1회 클릭 →
+ *     사이트가 신청서(/reservation/create) 를 렌더하면 주입된 입력기가 이름/연락처/인원/가상계좌/약관을 채운다.
+ *     최종 '예약하기' 는 예약 생성 + 가상계좌 발급이므로 **어떤 플래그로도 대신 클릭하지 않는다** (사람 클릭 전용).
+ *        [--person 2]  신청서의 예약 인원 (미지정 시 화면의 테마 최소 인원으로 채우고 WARN)
+ *     캡차·로그인이 없고 devtools 차단도 없어서 해제 주입(ext/inject.js) 을 쓰지 않는다.
+ *
  * 동작: ① --open-at 까지 1초 단위 대기 → 오픈 전 PREROLL 초부터 슬롯 폴링(기본 45ms)
  *       ② --times 는 우선순위. 노출 + enable!=N 인 첫 항목을 확보
  *       ③ Step1 UI 를 생략하고 reservation2.php 로 직접 POST (NEXT 와 동일 폼)
@@ -43,8 +50,9 @@ import { zwArmHumanInput, zwSubmit } from './zw-submit.mjs';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { rpc, getTimes, cdp, keTab, filler, postNav, sleep, STEP2_READ, step2Submit, BLOCK_MARK, BRANCHES, applyUnlock, personal, maskName, maskHp } from './lib.mjs';
-import { siteOf, apiTimes, siteTab, zwFiller, zwPick, ZW_READ } from './sites.mjs';
+import { siteOf, apiTimes, siteTab, zwFiller, zwPick, ZW_READ, apiThemes } from './sites.mjs';
 import { dpsUrl, dpsFiller, dpsBook, dpsPay, dpsSlotRead, dpsOrderRead, dpsLogin } from './sites.mjs';
+import { RHE, rheUrl, rheFiller, rhePick, rheSlotRead, rheCreateRead } from './sites.mjs';
 
 const A = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -78,10 +86,23 @@ if (SITE.key === 'dps') {                       // 단편선: 결제화면에서
   }
   if (dp) BUYER.dep = dp;
 } else if (SITE.buyerMode === 'mobile1line') BUYER.mobile = HPD;      // 제로월드: 연락처 한 줄(13자 검증)
+else if (SITE.buyerMode === 'phone1line') BUYER.phone = HPD;          // 토끼굴: 연락처 한 줄(사이트 mask 000-0000-0000)
 else { BUYER.mobile1 = HPD.slice(0, 3); BUYER.mobile2 = HPD.slice(4, 8); BUYER.mobile3 = HPD.slice(9); }
 const AGREES = String(A.agrees || SITE.agrees.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 const PERSON = A.person ? String(A.person) : null;
 if (PERSON) BUYER.person = PERSON;
+if (SITE.key === 'rhe') {
+  // 토끼굴 신청서는 '예약 인원' 을 반드시 고르게 한다. 미지정이면 화면의 테마 최소 인원(실측 2~4 → 2) 로 채우고 알린다.
+  if (PERSON) BUYER.people = PERSON;
+  else {
+    const th = await apiThemes('rhe', Z).catch(() => null);
+    const min = ((th && th.themes) || []).find((x) => String(x.theme) === String(T));
+    if (min && min.minPerson) {
+      BUYER.people = String(min.minPerson);
+      console.log(`[WARN] 인원(--person) 미지정 → 테마 최소 인원 ${min.minPerson}명으로 채웁니다 (신청서에서 요금과 함께 직접 수정할 수 있습니다)`);
+    }
+  }
+}
 const DRY = !!A.dry;
 // 👀 감시 전용: 디버거(CDP) 를 아예 붙이지 않는다. 사이트는 devtools-detector 로 디버거가 붙은
 // 페이지를 통째로 막아버리므로, 페이지를 건드리지 않는 이 방식만이 차단과 무관하게 항상 동작한다.
@@ -154,7 +175,9 @@ if (!DRY && !WATCH_ONLY) {
     ? `(${dpsFiller.toString()})(${JSON.stringify(BUYER)},${JSON.stringify({ agreeAll: AGREE_ALL })})`   // 결제화면에서 이름/연락처/입금자명 + 무통장입금 + 약관 전체동의
     : SITE.key === 'zeroworld'
       ? `(${zwFiller.toString()})(${JSON.stringify(BUYER)})`
-      : `(${filler.toString()})(${JSON.stringify(BUYER)},${JSON.stringify(AGREES)})`;
+      : SITE.key === 'rhe'
+        ? `(${rheFiller.toString()})(${JSON.stringify(BUYER)})`                                        // 신청서에서 이름/연락처/인원/가상계좌/약관 (최종 버튼은 사람이 클릭)
+        : `(${filler.toString()})(${JSON.stringify(BUYER)},${JSON.stringify(AGREES)})`;
   await c.send('Page.addScriptToEvaluateOnNewDocument', { source: inject });
   if (SITE.key === 'zeroworld' && AUTO_SUBMIT) {
     const arm = `(${zwArmHumanInput.toString()})()`;
@@ -172,6 +195,9 @@ if (!DRY && !WATCH_ONLY) {
 if (SITE.key === 'dps' && !WATCH_ONLY) {
   log(`[POLICY] 약관 전체동의 ${AGREE_ALL ? '자동 체크' : '사람 체크'} · '예약하기' ${AUTO_SUBMIT ? '자동 클릭(단편선 기본값)' : '사람 클릭'} · 최종 '결제하기' ${PAY_SUBMIT ? '★ 자동 클릭 — 실제로 결제가 진행됩니다' : '사람 클릭 (UI 체크박스를 켠 경우에만 자동)'}`);
   if (PAY_SUBMIT) log('[POLICY] 결제하기 게이트: 결제화면 + 무통장입금 선택 + 이름/연락처/입금자명 채워짐 + 약관 전체 체크 + 금액 0원 아님 + 버튼 정확히 1개 + 중복 클릭 금지 — 하나라도 걸리면 누르지 않습니다 (금액까지 검증하려면 --pay-total)');
+}
+if (SITE.key === 'rhe' && !WATCH_ONLY) {
+  log(`[POLICY] '시간 버튼' 은 목표 시각에 자동 1회 클릭(좌표 4개 일치 + active1 + 버튼 1개 + _token 확인) · 신청서의 이름/연락처/인원/${RHE.payMethod}/약관 자동 입력 · 최종 '예약하기' 는 사람 클릭 — 그 버튼이 예약 생성 + ${RHE.payMethod} 발급이라 대신 누르지 않습니다`);
 }
 
 /* ---------- 2) 슬롯 폴링 (오픈 전 워밍 -> 우선순위 히트) ---------- */
@@ -376,6 +402,98 @@ if (SITE.key === 'dps') {
     if (PAY_SUBMIT) await payNow();
     else log("[HANDOFF] 이름/연락처/입금자명 · 무통장입금 · 약관 전체동의까지 끝났습니다 — 마지막 '결제하기' 는 사람이 클릭합니다 (UI 에서 '결제하기까지 자동 클릭' 을 켜면 게이트 통과 시 자동)");
   }
+  c.ws.close();
+  process.exit(0);
+}
+
+/* ---------- 3-RHE) 토끼굴: 예약 화면에서 시간 버튼 1회 클릭(사이트 제출 경로) → 신청서 자동 입력 → '예약하기' 는 사람 ---------- */
+if (SITE.key === 'rhe') {
+  const url = rheUrl({ branch: Z, theme: T, date: D });
+  log(`[RHE] 예약 페이지로 이동: ${url}`);
+  await c.send('Page.navigate', { url }).catch((e) => log('[FAIL] 이동 실패: ' + e.message));
+  let sl = null;
+  for (let i = 0; i < 60; i++) {
+    sl = await c.evaluate(`(${rheSlotRead.toString()})()`).catch(() => null);
+    if (sl && sl.onReservation && sl.buttons) break;
+    await sleep(250);
+  }
+  out('[SLOT]', {
+    url: (sl && sl.href) || '-', 화면날짜: (sl && sl.dateInput) || '-', 테마선택: (sl && sl.themeInput) || '-',
+    버튼: (sl && sl.buttons) ?? 0, 예약가능: (sl && sl.open) ?? 0, after_hit_ms: Date.now() - tHit,
+  });
+  const want = { branch: Number(Z), theme: Number(T), date: D, time: hit.time };
+  const pick = (preview) => c.evaluate(`(${rhePick.toString()})(${JSON.stringify({ ...want, preview })})`)
+    .catch((e) => ({ ok: false, problems: ['evaluate 실패: ' + e.message] }));
+  if (SUBMIT_PREVIEW) {
+    const pv = await pick(true);
+    out('[PREVIEW]', {
+      클릭대상: pv.btn || '-', 좌표: pv.좌표 || '-', 예약가능: pv.예약가능 ?? '-',
+      폼검증: (pv.problems || []).length ? '실패' : '통과', 문제: (pv.problems || []).join(',') || '없음',
+    });
+    log(`[PREVIEW] ${(pv.problems || []).length ? '검증 미통과 — 클릭 대상이 아닙니다' : '지금 상태 그대로면 클릭 가능한 회차입니다'} (아무것도 클릭하지 않았습니다)`);
+    c.ws.close(); process.exit(0);
+  }
+  const pk = await pick(false);
+  out('[PICK]', { ok: pk.ok, 버튼: pk.btn || '-', 좌표: pk.좌표 || '-', 사유: (pk.problems || []).join(' / ') || '-', after_hit_ms: Date.now() - tHit });
+  if (!pk.ok) {
+    log('[ABORT] 시간 버튼을 누르지 않았습니다 — 브라우저에서 직접 클릭하세요 (재시도 없음)');
+    await shot('pick-failed');
+    await handoff('회차 버튼 검증 실패', url);
+    c.ws.close(); process.exit(9);
+  }
+  // 클릭 → 사이트가 #eveSubmitForm 을 POST → /reservation/create 새 문서. 주입된 입력기가 곧 폼을 채운다.
+  let cd = null;
+  const createUntil = Date.now() + 30000;
+  while (Date.now() < createUntil) {
+    const dlg = c.drain('Page.javascriptDialogOpening');
+    if (dlg) {
+      log('[ALERT] 사이트 메시지: ' + String((dlg.params && dlg.params.message) || '').replace(/\s+/g, ' ').slice(0, 120));
+      await c.send('Page.handleJavaScriptDialog', { accept: true }).catch(() => {});
+    }
+    cd = await c.evaluate(`(${rheCreateRead.toString()})()`).catch(() => null);
+    if (cd && cd.onCreate && cd.fillState) break;
+    if (cd && cd.onDone) break;
+    await sleep(150);
+  }
+  if (!cd || !cd.onCreate) {
+    out('[CREATE]', { 상태: '신청서 미도착 (30초)', url: (cd && cd.href) || '-', 처리: '브라우저에서 신청서를 직접 확인하세요 (재시도 없음)' });
+    log('[WARN] 신청서(/reservation/create) 를 확인하지 못했습니다 — 재시도/재클릭 없이 여기서 멈춥니다');
+    await shot('create-missing');
+    await handoff('신청서 미도착', url);
+    c.ws.close(); process.exit(10);
+  }
+  out('[CREATE]', {
+    url: cd.href, 좌표: Object.entries(cd.hidden || {}).map(([k, v]) => `${k}=${v}`).join(' '),
+    신청자: `${maskName(cd.name) || '-'}`, 연락처: maskHp(cd.phone || '') || '-', 인원: cd.people || '-',
+    결제수단: cd.pay || '미선택', 요금: cd.price || '-', 약관: cd.policy ? '동의' : '미동의',
+    자동입력: `${cd.fillState || '-'}${cd.fillMissing ? ' / 누락: ' + cd.fillMissing : ''}`, 입력_ms: cd.fillMs ?? '-',
+  });
+  const want4 = { branch: String(Z), theme: String(T), date: D, time: hit.time };
+  if (JSON.stringify(cd.hidden || {}) !== JSON.stringify(want4)) {
+    log(`[WARN] 신청서의 예약좌표가 목표(${Object.values(want4).join('/')}) 와 다릅니다 — 브라우저에서 확인하세요 (입력만 하고 클릭하지 않았습니다)`);
+  }
+  await shot('form-ready');
+  await notify(`${SITE.label} 신청서 준비 완료`, `${D} ${hit.time} — 브라우저에서 인원/요금 확인 후 '예약하기' 를 클릭하세요`);
+  log("[HANDOFF] 신청서가 채워졌습니다 — 마지막 '예약하기' 는 사람이 클릭합니다 (클릭 = 예약 생성 + 가상계좌 발급)");
+  // 사람이 예약하기를 누르면 /reservation/done 으로 이동한다. 결과 화면 문구까지 확인하고 끝낸다 (우리는 누르지 않는다).
+  const doneUntil = Date.now() + HUMAN_WAIT * 1000;
+  let res = null, beat = 0;
+  while (Date.now() < doneUntil) {
+    const dlg = c.drain('Page.javascriptDialogOpening');
+    if (dlg) {
+      log('[ALERT] 사이트 메시지: ' + String((dlg.params && dlg.params.message) || '').replace(/\s+/g, ' ').slice(0, 120));
+      await c.send('Page.handleJavaScriptDialog', { accept: true }).catch(() => {});
+    }
+    const s = await c.evaluate(`(${rheCreateRead.toString()})()`).catch(() => null);
+    if (s && (s.onDone || !s.onCreate)) { res = s; break; }
+    if (++beat % 40 === 0) log(`[WAIT] '예약하기' 클릭 대기 중… 남은 ${Math.round((doneUntil - Date.now()) / 1000)}초`);
+    await sleep(300);
+  }
+  if (res) {
+    out('[RESULT]', { url: res.href || '-', 확인: res.onDone ? '/reservation/done (완료 화면)' : '페이지 이동', 문구: (res.body || '').slice(0, 90) || '-' });
+    await shot('submitted');
+    log('[DONE] 이 도구는 예약하기를 누르지 않았습니다 — 브라우저의 예약 완료 화면과 가상계좌를 확인하세요');
+  } else log('[IDLE] 예약하기 클릭이 감지되지 않았습니다. 신청서 준비 상태는 그대로 유지됩니다.');
   c.ws.close();
   process.exit(0);
 }

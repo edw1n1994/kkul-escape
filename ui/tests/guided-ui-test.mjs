@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { once } from 'node:events';
 import { cdp, sleep } from '../lib.mjs';
 const files = new URL('../public/', import.meta.url);
-const sites = [{key:'keyescape',label:'키이스케이프'},{key:'zeroworld',label:'제로월드'},{key:'dps',label:'단편선'},{key:'naver',label:'네이버 예약'}];
+const sites = [{key:'keyescape',label:'키이스케이프'},{key:'zeroworld',label:'제로월드'},{key:'dps',label:'단편선'},{key:'naver',label:'네이버 예약'},{key:'rhe',label:'방탈출 토끼굴'}];
 const fixture = { unlock:{cdp:'OK',count:0,allUnlocked:true}, unlockPosts:0, unlockReads:0, unlockFail:false, running:false, connected:true, logged:true, fail:false, calls:[], selection:null, streams:new Set() };
 const server = http.createServer(async (req,res) => {
  const url=new URL(req.url,'http://local'), site=url.searchParams.get('site')||'naver';
@@ -77,6 +77,7 @@ try{
   await click('#wizardNext');assert.match(await ev("$('wizardError').textContent"),/시간/);
   await click('.chip');await click('#wizardNext');assert.equal(await ev("document.querySelector('[data-panel]:not([hidden])').dataset.panel"),'2');
   if(key!=='naver')await ev("$('pname').value='테스트유저';$('hp').value='010-0000-0000';$('dep').value='테스트유저'");
+  if(key==='rhe')await ev("$('rhePerson').value='4';$('rhePerson').onchange()");   // 토끼굴 신청서의 '예약 인원'
   if(key==='keyescape'){
    fixture.fail=true;await click('#wizardNext');await wait("$('wizardError').textContent.includes('테스트 연결 실패')");assert.equal(await ev("$('wizardNext').disabled"),false);fixture.fail=false;
   }
@@ -89,6 +90,11 @@ try{
   if(key==='keyescape'){assert.equal(await ev("$('developerStatus').hidden"),false);assert.equal(await ev("$('developerStatus').dataset.state"),'active');assert.equal(await ev("$('enableDeveloper').disabled"),true);}
   const body=fixture.calls.at(-1);assert.equal(body.site,key);assert.equal(body.times,'19:20');assert.equal(body.date,'2099-09-17');assert.equal(body.paySubmit,undefined);
   if(key==='naver'){assert.equal(body.name,undefined);assert.equal(body.bankConfirm,true);assert.equal(body.bankMax,70000);}else {assert.equal(body.name,'테스트유저');assert.equal(body.bankConfirm,undefined);}
+  assert.equal(await ev("$('rhePersonWrap').style.display"),key==='rhe'?'':'none');   // '예약 인원' 은 토끼굴 신청서에만 있다
+  if(key==='rhe'){   // 인원·넓은 마감 창은 실려가지만 '예약하기' 자동 클릭 항목은 아예 없다 (최종 클릭은 사람)
+   assert.equal(body.person,'4');assert.ok(body.deadline>=600);assert.equal(body.autoSubmit,undefined);assert.equal(body.paySubmit,undefined);
+   assert.equal(await ev("$('subRow').style.display"),'none');assert.match(await ev("$('autoHelp').textContent"),/직접 눌러 주세요/);}
+  else assert.equal(body.person,undefined);
   assert.equal(await ev("$('siteFields').disabled"),true);assert.equal(await ev("document.querySelector('[data-design-link]')"),null);
   if(key==='naver'){
    await c.send('Page.reload');await wait("typeof window.bookingUI==='object' && $('wizardNext').textContent==='예약 진행 중'");
@@ -108,5 +114,5 @@ try{
  await c.send('Page.navigate',{url:origin+'/classic.html'});await wait("location.pathname==='/classic.html' && !!document.querySelector('.chip')");assert.equal(await ev('typeof fire'),'function');assert.equal(await ev('typeof window.bookingUI'),'undefined');
  await click('[data-design-link]');await wait("location.pathname==='/' && typeof window.bookingUI==='object'");
  const errors=c.events.filter(e=>e.method==='Runtime.exceptionThrown');assert.equal(errors.length,0,JSON.stringify(errors));
- console.log('GUIDED_UI_OK: four sites, payloads, duplicate prevention, failures, stop, layout, no design switch, archived classic');
+ console.log('GUIDED_UI_OK: five sites, payloads, duplicate prevention, failures, stop, layout, no design switch, archived classic');
 }finally{c?.ws.close();if(tab)await fetch(host+'/json/close/'+tab.id);for(const s of fixture.streams)s.end();server.closeAllConnections();server.close();}

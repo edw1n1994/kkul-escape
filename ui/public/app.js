@@ -5,8 +5,9 @@ const TABS = [{ key: 'keyescape', label: '키이스케이프' }, { key: 'zerowor
 const isZw = () => S.site === 'zeroworld';
 const isDps = () => S.site === 'dps';
 const isNaver = () => S.site === 'naver';
-/** 사이트별 '예약하기' 자동 클릭 기본값 — 단편선은 캡차가 없고 예약좌표 검증이 가능해 on, 키이스케이프는 off */
-const autoKey = () => 'ke.autosub' + (isNaver() ? '.naver' : isDps() ? '.dps' : isZw() ? '.zeroworld' : '');
+const isRhe = () => S.site === 'rhe';
+/** 사이트별 '예약하기' 자동 클릭 기본값 — 단편선은 캡차가 없고 예약좌표 검증이 가능해 on, 키이스케이프는 off (토끼굴은 자동 클릭 자체가 없다) */
+const autoKey = () => 'ke.autosub' + (isNaver() ? '.naver' : isDps() ? '.dps' : isZw() ? '.zeroworld' : isRhe() ? '.rhe' : '');
 const autoDefault = () => (isDps() || isNaver() ? '1' : '0');
 const subWanted = () => (localStorage.getItem(autoKey()) !== null ? localStorage.getItem(autoKey()) : autoDefault()) === '1';
 function renderTabs() {
@@ -19,12 +20,16 @@ function copySite() {
   $('naverOpen').style.display = isNaver() ? '' : 'none';
   $('nameWrap').style.display = $('hpWrap').style.display = isNaver() ? 'none' : '';
   $('bLock').style.display = isNaver() ? 'none' : '';
-  $('openHint').innerHTML = isNaver() ? '요일별 참고 시간표입니다. 실제 회차·예약 가능 여부는 네이버 화면에서 확인합니다. 예약자 정보는 네이버 계정 정보를 사용합니다.' : zw
-    ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
-    : '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.';
-  $('step2Title').firstChild.textContent = isNaver() ? '네이버 예약 상태 ' : zw ? '예약 폼 상태 ' : 'Step2 도착 상태 ';
+  $('openHint').innerHTML = isNaver() ? '요일별 참고 시간표입니다. 실제 회차·예약 가능 여부는 네이버 화면에서 확인합니다. 예약자 정보는 네이버 계정 정보를 사용합니다.' : isRhe()
+    ? '토끼굴은 <b>오늘부터 +7일까지만 조회되는 롤링 창</b>입니다. 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 조회되기 시작하는 시각에 맞춰 시간 버튼이 자동 클릭됩니다. 이 사이트는 오픈 시각 공지가 없어 달력이 밀리는 시각을 자정으로 봅니다.'
+    : zw
+      ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
+      : '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.';
+  $('step2Title').firstChild.textContent = isNaver() ? '네이버 예약 상태 ' : isRhe() ? '신청서 상태 ' : zw ? '예약 폼 상태 ' : 'Step2 도착 상태 ';
+  if ($('rhePersonWrap')) $('rhePersonWrap').style.display = isRhe() ? '' : 'none';   // '예약 인원' 은 토끼굴 신청서에만 있다
   // '예약하기' 자동 클릭: 키이스케이프 Step2(opt-in) · 단편선(기본 on — 캡차 없음) · 제로월드(사용자 코드 입력 후 opt-in)
-  $('subRow').style.display = 'flex';
+  // 토끼굴은 자동 클릭 옵션을 아예 보여주지 않는다 — 신청서 제출이 예약 생성 + 가상계좌 발급이라 사람이 누른다.
+  $('subRow').style.display = isRhe() ? 'none' : 'flex';
   renderSub();
 }
 /** 자동 클릭 두 개(예약하기 / 결제하기) 의 라벨·체크박스·경고 문구를 현재 사이트/상태에 맞게 다시 그린다 */
@@ -185,7 +190,9 @@ async function loadThemes() {
 }
 function onTheme() {
   const t = cur(); if (!t) return;
-  $('themeMeta').innerHTML = isNaver() ? '네이버 로그인 필요 · 예약창에서 계정 정보를 확인하세요.' : isZw()
+  $('themeMeta').innerHTML = isNaver() ? '네이버 로그인 필요 · 예약창에서 계정 정보를 확인하세요.' : isRhe()
+    ? `theme=<b>${t.theme}</b> · ${t.personRange ? t.personRange + '명' : '인원 -'} · ${t.genre || '-'} · ${t.play || '-'}분 · 신청서까지 자동 진행 후 최종 '예약하기' 는 직접 클릭`
+    : isZw()
     ? `themeNum=<b>${t.theme}</b> · ${t.minPerson ? t.minPerson + '인~' : '인원 -'} · 난이도 ${'●'.repeat(Number(t.level) || 0) || '-'} · ${t.genre || '-'} · ${t.play || '-'}분`
     : `themeNum=<b>${t.theme}</b> · themeInfoNum=<b>${t.info}</b> · 난이도 ${t.level || '-'} · ${t.genre || '-'} · ${t.play || '-'}분`;
   S.date = ''; S.time = ''; OPEN_ISO = null; S.matrix = [];
@@ -327,6 +334,12 @@ async function fire(dry, wo) {
     times: S.time, deadline: DEF.deadline, name: name || DEF.name, hp: hp || DEF.hp,
     dep: ($('dep').value || '').trim(),
   };
+  if (isRhe()) {
+    // 토끼굴은 오픈 시각 공지가 없어 달력 창(D-7) 기준 자정으로 본다 → 조회가 시작되는 순간을 넓게 잡는다
+    body.deadline = Math.max(DEF.deadline, 600);
+    const p = $('rhePerson') ? $('rhePerson').value : '';
+    if (p) body.person = p;   // 신청서의 '예약 인원' — 미선택이면 러너가 화면의 테마 최소 인원으로 채운다
+  }
   if (isNaver()) { delete body.name; delete body.hp; delete body.dep; }
   if (isNaver() && !dry && !wo && $('naverConfirm')?.checked) {
     if (!$('autosub').checked) return alert('신청서까지 자동 진행을 먼저 켜 주세요.');
@@ -341,7 +354,7 @@ async function fire(dry, wo) {
     if (new Date(iso).getTime() < Date.now() && !confirm('이미 오픈된 날짜입니다. 즉시 시도합니다. 계속할까요?')) return;
     body.openAt = iso;
   }
-  if (!dry && !wo && $('autosub')) {
+  if (!dry && !wo && $('autosub') && !isRhe()) {
     body.autoSubmit = $('autosub').checked;      // 단편선은 서버가 autoSubmit===false 를 --no-auto-submit 으로 바꾼다
     if (isDps() && $('paybtn').checked) body.paySubmit = true;   // 최종 '결제하기' — 이 체크박스에서만 켜진다 (기본 off)
   }
@@ -366,7 +379,7 @@ async function stop() {
   loadEnv();
 }
 
-/* ---------- 대상 페이지 상태 (KE: reservation2 / ZW: 예약 폼) · 카운트다운 ---------- */
+/* ---------- 대상 페이지 상태 (KE: reservation2 / ZW: 예약 폼 / RHE: 신청서) · 카운트다운 ---------- */
 async function loadStep2() {
   const d = await (await fetch(`/api/step2?site=${S.site}&zizum=${$('zizum').value}&theme=${cur()?.theme || ''}&date=${S.date}&time=${S.time}`)).json();
   if (!d.ok) { $('step2').innerHTML = `<div><b>확인 실패</b>${esc(d.msg)}</div>`; return; }
@@ -374,6 +387,19 @@ async function loadStep2() {
   const fillCell = (x) => cell('자동입력', x.fillMs != null ? x.fillMs.toFixed(0) + 'ms' + (x.fillErr ? ' (미완)' : '') : (x.fillErr || '대기'));
   if (d.site === 'naver') {
     $('step2').innerHTML = [cell('예약 상태', d.msg || (d.loaded ? '회차 확인됨' : '대기')), cell('선택 날짜', d.date), cell('목표 시간', S.time)].join('');
+    return;
+  }
+  if (d.site === 'rhe') {
+    if (!d.onCreate && !d.onDone) { $('step2').innerHTML = `<div><b>waiting</b>신청서 페이지 아님 · ${esc((d.href || d.msg || '').slice(-40))}</div>`; return; }
+    $('step2').innerHTML = [
+      cell('예약좌표', Object.entries(d.hidden || {}).map(([k, v]) => `${k}=${v}`).join(' ') || d.summary),
+      cell('이름/연락처', `${d.name || '-'} / ${d.phone || '-'}`),
+      cell('인원/요금', `${d.people || '-'}명 · ${d.price || '-'}`),
+      cell('결제수단', d.pay || '미선택'),
+      cell('약관', d.policy ? '✅ 동의됨' : '⚠ 직접 동의 필요'),
+      fillCell({ fillMs: d.fillMs != null ? d.fillMs : null, fillErr: d.fillMissing ? '누락: ' + d.fillMissing : (d.fillState === 'done' ? '' : '대기') }),
+      cell('예약하기', d.onDone ? '완료 화면(/reservation/done) 입니다' : '사람 클릭 — 누르면 예약 생성 + 가상계좌 발급'),
+    ].join('');
     return;
   }
   if (d.site === 'zeroworld') {
@@ -463,6 +489,10 @@ setInterval(() => {
 $('zizum').onchange = loadThemes;
 $('theme').onchange = onTheme;
 $('pname').onchange = $('hp').onchange = $('dep').onchange = saveBuyer;
+if ($('rhePerson')) {   // 토끼굴 신청서의 '예약 인원' — 비워 두면 러너가 화면의 테마 최소 인원으로 채운다
+  $('rhePerson').value = localStorage.getItem('ke.person') || '';
+  $('rhePerson').onchange = () => localStorage.setItem('ke.person', $('rhePerson').value);
+}
 (async () => {
   renderTabs(); copySite();
   connect();

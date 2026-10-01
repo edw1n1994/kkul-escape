@@ -186,6 +186,25 @@
    `예약하기`(주문 생성 `add_order.cm`) 는 단편선에서 기본 자동이 되었다(끄려면 `--no-auto-submit` — 캡차가 없고
    예약좌표 prod_idx/start_day 를 화면에서 검증할 수 있기 때문). 로그아웃 상태에서는 검증 단계에서 거부된다.
 
+### ⑮ 4번째 사이트 — 방탈출 토끼굴(홍대) · `site=rhe` (`rabbitholeescape.co.kr/reservation`)
+
+- 2026-10-01 추가. 자체 Laravel 사이트라 **devtools 차단이 없다** → `applyUnlock` 을 걸지 않고 화면만 다룬다.
+- 흐름: `GET /reservation?branch=1&theme=&date=YYYY-MM-DD` 한 장 → `button.active1.eveReservationButton`
+  안 `div.eveHiddenData` JSON 이 예약좌표 `{branch,theme,date,time}` → 버튼을 누르면 **사이트 JS 가**
+  `#eveSubmitForm`(hidden 4종 + `_token`) 을 채워 `POST /reservation/create` 로 submit → 신청서 렌더.
+  우리가 POST 를 조작하지 않으므로 토큰·서버 검증을 그대로 지나다.
+- 러너는 목표 좌표 4개(branch/theme/date/time) 를 모두 확인한 버튼 **1개**만 누르고, 신청서에서
+  이름/연락처(사이트 마스크 `00Z-000Z-0000`)/인원/결제수단(실측 1종 = 가상계좌)/약관을 채운다.
+  인원은 화면 셀렉트에서 실시간으로 읽은 **테마 최소 인원**(행운만물상 2명)를 기본으로 한다.
+- **최종 `#eveReservationBtn`('예약하기') 은 절대 누르지 않는다** — 그 버튼이 AJAX `POST /reservation/payment`
+  로 예약 생성 + 가상계좌 발급(입금 의무)을 동시에 일으키기 때문(단편선의 `결제하기` 와 같은 취급).
+  화면의 '예약하기 자동 클릭' 체크박스도 토끼굴에서는 아예 숨긴다. 러너도 예약 화면에서 4초마다 상태만 읽다가 사용자가 종료한다.
+- **오픈 규칙 공지 없음** → 달력이 오늘~오늘+7 롤링 창(datepicker `maxDate=+7` 실측), 창 밖 날짜는 서버가 **302으로 홈으로**
+  되돌린다(`isRhePage` 로 감지 → `notOpen`). 그래서 openInfo 는 `openTime 00:00` + `leadDays 7` 로 안내하고,
+  matrix 가 관측한 창 끝(`rheNoteWindow`) 이 있으면 그것을 우선한다. matrix 는 창 밖이 확인되는 순간 이후 날짜 조회를 멈춘다.
+- 세션 쿠키 없이 `?date=` 를 처음 찍으면 홈으로 튕긴다(실측) → `rheHtml` 이 쿠키를 받아 같은 세션으로 한 번 더 문다.
+- 테스트: `ui/tests/rhe-test.mjs` + `ui/tests/fixture-rhe-{reservation,create}.html` (오프라인, `npm test` 에 포함).
+
 ## 4. 디버거 차단(`devtools-detector`) 사가 — 반드시 알아야 하는 함정
 
 - 사이트 `reservation*.php` 하단 인라인 스크립트가 `devtools-detector@2.0.22` 를 읽고, 디버거가 감지되면

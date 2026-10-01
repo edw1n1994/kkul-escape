@@ -1,4 +1,4 @@
-# 키이스케이프 / 제로월드 / 단편선 예약 도우미 (UI)
+# 키이스케이프 / 제로월드 / 단편선 / 방탈출 토끼굴 예약 도우미 (UI)
 
 테마 이름 → 날짜 → 시간대를 화면에서 골라서 **오픈 시각에 자동 예약**하는 로컬 웹 UI.
 `../reserve-fast.mjs` 의 초고속 경로를 그대로 엔진으로 쓴다. 화면 상단 탭으로 **키이스케이프 / 제로월드**를 바꾼다.
@@ -143,6 +143,39 @@ node runner.mjs --site dps --zizum m2021111422e8d3a51ef50 \
 실측 주의: 결제화면은 URL(`?order_code=`)이 먼저 뜨고 **입력란은 그 뒤에 렌더**된다(첫 스냅샷 `inputs=0`).
 러너는 필드가 나타난 뒤, 게다가 주입된 입력기가 채움을 끝낸 뒤에 결과를 발표한다.
 `무통장입금` 선택 시 계좌와 함께 **"주문 후 1시간 동안 미입금 시 자동 취소"** 문구가 뜬다 — 실측 안내.
+
+## 방탈출 토끼굴(홍대) — 자체 사이트 · 로그인 불필요 (`rabbitholeescape.co.kr/reservation`)
+
+네 번째 사이트(`site=rhe`). 한 화면에서 지점·테마·날짜를 고르고 **시간 버튼을 누르면 신청서로 넘어가는** 구조라
+네이버·단편선처럼 화면을 타고 들어가는 어댑터(`ui/rhe.mjs`) 를 붙였다. devtools 차단 스크립트가 없어 **디버거 해제를 걸지 않는다**.
+
+```bash
+sh ui.sh                       # 사이트 탭에 '방탈출 토끼굴(홍대)' 가 생긴다
+curl "127.0.0.1:8899/api/branches?site=rhe"
+curl "127.0.0.1:8899/api/times?site=rhe&zizum=1&theme=5&date=2026-10-07"
+curl "127.0.0.1:8899/api/openinfo?site=rhe&zizum=1&date=2026-10-09"
+# 러너: 시간 버튼 클릭 → 신청서 채움. '예약하기' 는 사람이 누른다
+node ui/runner.mjs --site rhe --zizum 1 --theme 5 --date 2026-10-07 --times 11:20 \
+     --name 홍길동 --hp 01012345678 --preview-submit
+```
+
+### 실측 (2026-10-01, 비로그인)
+
+| 무엇 | 값 |
+| --- | --- |
+| 예약 화면 | `GET /reservation?branch=1&theme=&date=YYYY-MM-DD` → HTML 한 장 |
+| 지점 | `<select name=branch>` → `1` 홍대점 (1개) |
+| 테마 | `<select name=theme>` → `5` 행운만물상(2~4인·70분) · `4` 두껍아 두껍아 헌집줄게 새집다오(2~6인·75분) |
+| 시간 버튼 | `button.active1.eveReservationButton` 안에 `label=예약가능` · `span=11:20` · `div.eveHiddenData` = `{"branch":1,"theme":5,"date":"…","time":"11:20"}`. '예약불가' 버튼에는 class 도 좌표도 없다 |
+| 클릭 동작 | 사이트 JS 가 `#eveSubmitForm` 의 hidden 4종 + `_token` 을 좌표로 채워 **submit** → `POST /reservation/create`. 우리가 POST 를 조작하지 않는다 |
+| 신청서 | `name`(maxlength 10) · `phone`(mask `00Z-000Z-0000`) · `people` select · `payment_method` radio(실측 1종 `21`=가상계좌) · `policy` 체크박스 · 요금표 `div#hiddenData` |
+| 제출 | `#eveReservationBtn` → AJAX `POST /reservation/payment` → `/reservation/done`. **이 버튼이 예약 생성 + 가상계좌 발급(입금 의무)** |
+| 오픈 규칙 | 공지가 없다. 달력이 오늘~오늘+7 롤링 창이고, 창 밖 날짜는 서버가 **302로 홈으로** 되돌린다 → openInfo 는 '창이 밀리는 시각 = 00:00' 으로 안내 |
+| 세션 | 쿠키 없이 `?date=` 를 처음 찍으면 튕긴다 → 어댑터가 쿠키를 받아 같은 세션으로 재시도한다 |
+
+정책: 시간 버튼 클릭과 신청서(이름·연락처·인원·결제수단·약관) 자동 입력까지는 허용,
+**최종 '예약하기'는 절대 자동 클릭하지 않는다** (단편선의 '결제하기'와 같은 취급 — 화면에서 체크박스 자체를 숨긴다).
+인원을 비워 두면 사이트 첫 번째 옵션(= 테마 최소 인원) 을 고르고, 요금(`#evePrice`) 이 함께 뜨는지 화면에서 확인한다.
 
 ## 화면
 

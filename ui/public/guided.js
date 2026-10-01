@@ -48,7 +48,7 @@
     $('naverBankOptions').hidden = !isNaver();
     $('naverBankLimit').hidden = !$('naverConfirm').checked;
 
-    text('autoHelp', isNaver() ? ($('naverConfirm').checked ? '무통장입금 예약 확정까지 진행해요. 계좌·입금 기한 확인과 송금은 직접 해 주세요.' : '무통장입금 예약 확정까지 자동으로 진행하려면 아래 옵션을 켜 주세요.') : isZw() ? '자동입력방지 코드를 직접 입력하면 예약하기를 눌러요.' : isDps() ? ($('paybtn').checked ? '최종 결제하기까지 자동 클릭하도록 설정되어 있어요.' : '예약하기까지 진행해요. 최종 결제는 직접 확인해 주세요.') : '체크박스는 자동으로 눌러요. 문제가 나오면 직접 풀어 주세요. 인증 후 예약하기를 눌러요.');
+    text('autoHelp', isRhe() ? '시간 버튼까지 자동으로 누르고 신청서(이름·연락처·인원·결제수단·약관)를 채워요. 최종 ‘예약하기’는 예약 생성 + 가상계좌 발급이라 직접 눌러 주세요.' : isNaver() ? ($('naverConfirm').checked ? '무통장입금 예약 확정까지 진행해요. 계좌·입금 기한 확인과 송금은 직접 해 주세요.' : '무통장입금 예약 확정까지 자동으로 진행하려면 아래 옵션을 켜 주세요.') : isZw() ? '자동입력방지 코드를 직접 입력하면 예약하기를 눌러요.' : isDps() ? ($('paybtn').checked ? '최종 결제하기까지 자동 클릭하도록 설정되어 있어요.' : '예약하기까지 진행해요. 최종 결제는 직접 확인해 주세요.') : '체크박스는 자동으로 눌러요. 문제가 나오면 직접 풀어 주세요. 인증 후 예약하기를 눌러요.');
     $('wizardBack').disabled = step === 0 || stopping;
     text('wizardBack', running || busy ? '대기 중단' : '이전');
     $('wizardBack').hidden = finished;
@@ -119,7 +119,7 @@
     starting(body) { localStart = true; busy = true; finished = false; stopping = false; phase = 'wait'; runSelection = { ...body }; showError(''); sync(); },
     started() { localStart = false; busy = false; running = true; sync(); },
     startFailed() { localStart = false; busy = false; running = false; runSelection = null; step = 2; sync(); },
-    log(line) { if ((running || busy) && /\[(ARM|STEP2|HANDOFF|ORDER|DONE)\]/.test(line)) { phase = 'manual'; sync(); } },
+    log(line) { if ((running || busy) && /\[(ARM|STEP2|HANDOFF|ORDER|CREATE|RESULT|DONE)\]/.test(line)) { phase = 'manual'; sync(); } },
   };
   document.addEventListener('change', sync);
   window.addEventListener('unhandledrejection', event => { error(event.reason); });

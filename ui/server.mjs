@@ -24,7 +24,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { BRANCHES, getThemes, getTimes, getCalendar, cdpList, cdp, keTab, STEP2_READ, openInfo, noteWindow, personal } from './lib.mjs';
-import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS } from './sites.mjs';
+import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS, rheNoteWindow, rheCreateRead, RHE } from './sites.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8899);
@@ -275,6 +275,20 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { ok: true, site, serverToday: today, days: out });
       }
+      if (site === 'rhe') {   // 오늘부터 D-7 롤링 창 — 창 밖 날짜는 서버가 홈으로 되돌린다 → 그 뒤는 물지 않는다
+        let outOfWindow = false;
+        for (let i = 0; i < days; i++) {
+          const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
+          const dow = '일월화수목금토'[new Date(d + 'T00:00:00Z').getUTCDay()];
+          if (outOfWindow) { out.push({ date: d, dow, open: 0, total: 0, msg: `예약 창 밖 (오늘부터 +${RHE.leadDays}일까지만 조회됨)` }); continue; }
+          const r = await apiTimes(site, Number(a.zizum), Number(a.theme), d);
+          out.push({ date: d, dow, open: r.slots.filter((s) => s.open).length, total: r.slots.length, msg: r.msg || '' });
+          if (r.notOpen) { outOfWindow = true; continue; }
+          await nap(160);
+        }
+        rheNoteWindow(today, out);   // 관측된 창 끝을 기억 → /api/openinfo 가 재스캔 없이 답한다
+        return json(res, 200, { ok: true, site, serverToday: today, days: out });
+      }
       for (let i = 0; i < days; i++) {
         const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
         const r = await apiTimes(site, Number(a.zizum), Number(a.theme), d);
@@ -324,15 +338,15 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/step2') {
       const site = siteOf(a.site);
       if (site.key === 'naver') return json(res, 200, { site: 'naver', ...await naverStatus(browserPort(a.cdp), a.zizum, a.theme, a.date, a.time) });
-      const t = site.key === 'zeroworld'
-        ? await siteTab(browserPort(a.cdp), 'zeroworld', a.zizum, false)
+      const t = (site.key === 'zeroworld' || site.key === 'rhe')
+        ? await siteTab(browserPort(a.cdp), site.key, a.zizum, false)
         : await keTab(browserPort(a.cdp), null, false);
       if (!t.ok) return json(res, 200, { ok: false, msg: t.msg });
       const c = cdp(t.tab.webSocketDebuggerUrl);
       try {
         await c.ready;
         await c.send('Runtime.enable');
-        const st = await c.evaluate(site.key === 'zeroworld' ? ZW_READ : STEP2_READ);
+        const st = await c.evaluate(site.key === 'zeroworld' ? ZW_READ : site.key === 'rhe' ? `(${rheCreateRead.toString()})()` : STEP2_READ);
         return json(res, 200, { ok: true, site: site.key, ...st });
       } catch (e) { return json(res, 200, { ok: false, msg: String(e.message) }); }
       finally { c.ws.close(); }

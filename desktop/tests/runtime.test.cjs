@@ -18,7 +18,7 @@ test('runtime allowlist excludes personal files and preserves user cache', () =>
   try {
     copyRuntime(root, dir);
     assert.ok(fs.existsSync(path.join(dir, 'ext/inject.js')));
-    for (const file of ['ui/recaptcha-click.mjs', 'ui/naver.mjs', 'ui/naver-browser.mjs', 'ui/naver-products.json', 'ui/public/classic.html', 'ui/public/app.js', 'ui/public/guided.js', 'ui/public/guided.css']) assert.ok(fs.existsSync(path.join(dir, file)));
+    for (const file of ['ui/recaptcha-click.mjs', 'ui/naver.mjs', 'ui/naver-browser.mjs', 'ui/naver-products.json', 'ui/rhe.mjs', 'ui/public/classic.html', 'ui/public/app.js', 'ui/public/guided.js', 'ui/public/guided.css']) assert.ok(fs.existsSync(path.join(dir, file)));
     assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'ui/naver-products.json')))[0].name, '바야흐로,여름이었다.');
     for (const name of ['ui/local.env', 'ui/runs.log', 'step2-snapshot.json', 'MEMORY.md']) {
       assert.equal(fs.existsSync(path.join(dir, name)), false);

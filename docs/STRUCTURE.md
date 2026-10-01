@@ -50,6 +50,17 @@ Docker 진단은 실제 사이트에 조회 요청을 하므로 오프라인 검
 사용됩니다. 런타임 파일을 추가하면 두 목록을 함께 확인해야 합니다.
 실험 도구·개인 설정·로그는 앱이나 Docker 이미지에 넣지 않습니다.
 
+## 사이트 어댑터
+
+| 파일 | 대상 사이트 |
+| --- | --- |
+| `ui/lib.mjs` | 키이스케이프(`www.keyescape.com`) — 예약창 + reservation2 · reCAPTCHA 체크박스 자동 클릭 |
+| `ui/zw.mjs` | 제로월드(`zeroworldkorea.com`) — 자동입력방지 코드는 사람이 입력 |
+| `ui/naver.mjs` | 네이버 예약 단편선(동시대를 씹다) + 무통장입금 게이트 |
+| `ui/rhe.mjs` | 방탈출 토끼굴 홍대(`rabbitholeescape.co.kr`) — 예약 화면의 시간 버튼을 누르고 신청서를 채운다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 사람 클릭 |
+| `ui/unlock-pages.mjs` | 각 화면에 삽입하는 디버거 해제 스크립트 (토끼굴은 차단이 없어 쓰지 않는다) |
+| `ui/sites.mjs` · `ui/runner.mjs` | 사이트 목록·API 분기와 CDP 실행기 — 새 사이트는 여기 두 곳을 함께 고친다 |
+
 Windows 실행: [WINDOWS.md](WINDOWS.md) · 앱 배포: [desktop/README.md](../desktop/README.md)
 · 예약 엔진: [ui/README.md](../ui/README.md)
 
@@ -58,5 +69,6 @@ Windows 실행: [WINDOWS.md](WINDOWS.md) · 앱 배포: [desktop/README.md](../d
 - `ui/public/index.html`, `guided.css`, `guided.js`: 기본 단계별 화면.
 - `ui/public/classic.html`: 기존 디자인 화면.
 - `ui/public/app.js`: 두 화면이 공유하는 조회·예약·자동입력 설정.
-- `ui/tests/guided-ui-test.mjs`: 로컬 API 픽스처로 네 사이트의 실행·중단·전환 검증.
+- `ui/tests/guided-ui-test.mjs`: 로컬 API 픽스처로 다섯 사이트(키이스케이프·제로월드·단편선·네이버·토끼굴)의 실행·중단·전환 검증.
+- `ui/tests/rhe-test.mjs` + `ui/tests/fixture-rhe-{reservation,create}.html`: 토끼굴 예약 화면 파싱, 시간 버튼 클릭 게이트, 신청서 입력기, 롤링 창(D-7) 오픈 안내를 오프라인으로 검증.
 - `.local/backups/classic-1.0.1/`: 이전 디자인 ZIP과 원본 HTML, Git·배포 제외.

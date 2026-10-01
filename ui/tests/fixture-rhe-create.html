@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!-- 방탈출 토끼굴 시간 버튼 클릭 후 나타나는 신청서(사이트에서는 "Step2") 오프라인 픽스처 (2026-10-01 실측 구조) -->
+<html lang="ko">
+<head>
+  <meta name="csrf-token" id="csrf" content="FIXTURE-CSRF-TOKEN">
+  <title> 방탈출 토끼굴 : 예약하기 </title>
+</head>
+<body>
+<article class="wrap">
+  <div class="res-wrap oh" id="wrap">
+    <form method="post" action="https://www.rabbitholeescape.co.kr/reservation/create">
+      <div class="reservation-form-table">
+        <table>
+          <tr><th>예약일</th><td><p class="el-text">30년 01월 07일 / 11시 20분</p><input type="hidden" name="datetime" value=""></td></tr>
+          <tr><th>테마명</th><td><p class="el-text">행운만물상</p></td></tr>
+          <tr><th>예약자</th><td><input class="el-input bsbb" style="width:100%" type="text" name="name" maxlength="10"></td></tr>
+          <tr><th>연락처</th><td><input class="el-input bsbb mask-phone" style="width:100%" type="text" name="phone" maxlength="13"></td></tr>
+          <tr><th>예약 인원</th><td>
+            <select class="bsbb" name="people" id="evePeople" onChange="fnPayment();">
+              <option value="">:: 예약 인원 선택 ::</option>
+              <option value="2">2명</option>
+              <option value="3">3명</option>
+              <option value="4">4명</option>
+            </select>
+          </td></tr>
+          <tr><th>결제 비용</th><td><p class="el-text" id="evePrice">인원을 선택해주세요.</p></td></tr>
+          <tr><th>결제방식</th><td>
+            <ul class="cba">
+              <li><label class="el-rc bsbb"><input type="radio" name="payment_method" value="21"><i></i>가상계좌</label></li>
+              <li><label class="el-rc bsbb"><input type="radio" name="payment_method" value="30"><i></i>카드결제</label></li>
+            </ul>
+          </td></tr>
+        </table>
+        <div class="reservation-form-policy cba">
+          <label class="el-cb bsbb"><input type="checkbox" name="policy"><i></i><span>주의사항 및 개인정보처리방침 동의</span></label>
+        </div>
+      </div>
+      <div class="reservation-form-buttons cba">
+        <button type="button" onclick="fnReservation();" id="eveReservationBtn">예약하기</button>
+        <button type="button" onclick="history.back();">이전으로</button>
+      </div>
+      <input type="hidden" name="branch" value="1">
+      <input type="hidden" name="theme" value="5">
+      <input type="hidden" name="date" value="2030-01-07">
+      <input type="hidden" name="time" value="11:20">
+      <div class="dn" id="hiddenData">{&quot;2&quot;:48000,&quot;3&quot;:72000,&quot;4&quot;:96000}</div>
+    </form>
+  </div>
+</article>
+</body>
+</html>
