@@ -57,7 +57,9 @@ Docker 진단은 실제 사이트에 조회 요청을 하므로 오프라인 검
 | `ui/lib.mjs` | 키이스케이프(`www.keyescape.com`) — 예약창 + reservation2 · reCAPTCHA 체크박스 자동 클릭 |
 | `ui/zw.mjs` | 제로월드(`zeroworldkorea.com`) — 자동입력방지 코드는 사람이 입력 |
 | `ui/naver.mjs` | 네이버 예약 단편선(동시대를 씹다) + 무통장입금 게이트 |
-| `ui/rhe.mjs` | 방탈출 토끼굴 홍대(`rabbitholeescape.co.kr`) — 예약 화면의 시간 버튼을 누르고 신청서를 채운다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 사람 클릭 |
+| `ui/rhe.mjs` | 방탈출 토끼굴 홍대(`rabbitholeescape.co.kr`) · 지구별(`지구별.com`, 같은 템플릿 `tonySite`) — 예약 화면의 시간 버튼을 누르고 신청서를 채운다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 사람 클릭 |
+| `ui/pagetoday.mjs` | 오늘의 한 페이지 강남(`page-today.co.kr`) — 예약 API 카탈로그 조회, 화면 버튼으로 03 확인까지 진행 (`예약 확정` 은 사람) |
+| `ui/oasis.mjs` | 오아시스 뮤지엄 홍대(`oasismuseum.com/ticket`) — 날짜 화면 + 마감 목록 조회, 시간 버튼과 정보 입력·동의 (`예약하기` 는 사람) |
 | `ui/unlock-pages.mjs` | 각 화면에 삽입하는 디버거 해제 스크립트 (토끼굴은 차단이 없어 쓰지 않는다) |
 | `ui/sites.mjs` · `ui/runner.mjs` | 사이트 목록·API 분기와 CDP 실행기 — 새 사이트는 여기 두 곳을 함께 고친다 |
 
@@ -71,4 +73,5 @@ Windows 실행: [WINDOWS.md](WINDOWS.md) · 앱 배포: [desktop/README.md](../d
 - `ui/public/app.js`: 두 화면이 공유하는 조회·예약·자동입력 설정.
 - `ui/tests/guided-ui-test.mjs`: 로컬 API 픽스처로 다섯 사이트(키이스케이프·제로월드·단편선·네이버·토끼굴)의 실행·중단·전환 검증.
 - `ui/tests/rhe-test.mjs` + `ui/tests/fixture-rhe-{reservation,create}.html`: 토끼굴 예약 화면 파싱, 시간 버튼 클릭 게이트, 신청서 입력기, 롤링 창(D-7) 오픈 안내를 오프라인으로 검증.
+- `ui/tests/sites-form-test.mjs`: 지구별 파싱·지점별 창, 오늘의 한 페이지 카탈로그·03 확인에서 멈춤(예약 확정 미클릭), 오아시스 파싱·마감 목록·시간 버튼 게이트·입력기(예약하기 미클릭).
 - `.local/backups/classic-1.0.1/`: 이전 디자인 ZIP과 원본 HTML, Git·배포 제외.

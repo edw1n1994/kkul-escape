@@ -12,13 +12,20 @@
  *   토끼굴(rhe)   자체 Laravel 사이트 — GET /reservation?branch&theme&date HTML 한 장에 지점/테마/시간 표
  *                 '예약가능' 버튼의 hiddenData JSON 을 사이트가 #eveSubmitForm 에 채워 POST /reservation/create
  *                 → 신청서(이름/연락처/인원/가상계좌/약관). 디테일은 ./rhe.mjs 주석에 실측 그대로 적어두었다.
+ *   지구별(jgb)   토끼굴과 같은 제작사 템플릿 — 지점 3곳, 지점마다 창 길이가 다르다 (./rhe.mjs 의 tonySite)
+ *   오늘의 한 페이지(ptd)  Reserv Company 예약 API(JSON) + 단일 페이지 화면 — 03 확인 화면까지 (./pagetoday.mjs)
+ *   오아시스 뮤지엄(oas)   날짜별 예약 화면 HTML + getSchedule(마감 목록) — 정보 입력·동의까지 (./oasis.mjs)
+ *
+ * flow: 'form' = 앱이 시간 선택과 신청서 입력까지 하고 마지막 버튼(finalButton) 은 사람이 누르는 사이트.
  *
  * 화면이 다른 만큼 "지점/테마/슬롯/오픈시각" 을 사이트별 어댑터로 감춘다.
  */
 import { getTimes as keGetTimes, getCalendar as keGetCalendar, openInfo as keOpenInfo, cdpList, BRANCHES, LEAD_DAYS_FALLBACK, sleep } from './lib.mjs';
 import { DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth } from './dps.mjs';
 import { naverProducts, naverPreview, naverOpenInfo, naverToday } from './naver.mjs';
-import { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday } from './rhe.mjs';
+import { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, JGB, JGB_SITE } from './rhe.mjs';
+import { PTD, ptdThemes, ptdTimes, ptdOpenInfo, ptdToday } from './pagetoday.mjs';
+import { OAS, oasUrl, oasThemes, oasTimes, oasOpenInfo, oasToday } from './oasis.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,9 +75,45 @@ export const SITES = {
     buyerMode: 'phone1line', agrees: [], captcha: '없음',
     needsInfo: false, deposit: false,
     openTime: RHE.openTime, leadDays: RHE.leadDays,
+    flow: 'form', finalButton: '예약하기', finalMeans: '예약 생성 + 가상계좌 발급',
     note: "로그인·자동등록방지 없음. 시간 버튼을 누르면 신청서가 열리고 이름/연락처/인원/결제수단/약관이 자동 입력됩니다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 직접 클릭합니다",
   },
+  jgb: {
+    key: 'jgb', label: JGB.label, base: JGB.base,
+    step1: (z) => JGB_SITE.url({ branch: z || JGB.branch }),
+    tabMatch: 'xn--2e0b040a4xj',
+    branches: JGB.branches,
+    buyerMode: 'phone1line', agrees: [], captcha: '없음',
+    needsInfo: false, deposit: false,
+    openTime: JGB.openTime, leadDays: JGB.leadDays,
+    flow: 'form', finalButton: '예약하기', finalMeans: '예약 생성 + 가상계좌 발급',
+    note: "로그인·자동등록방지 없음. 토끼굴과 같은 신청서(이름/연락처/인원/가상계좌/약관)를 자동 입력합니다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 직접 클릭합니다",
+  },
+  ptd: {
+    key: 'ptd', label: PTD.label, base: PTD.base,
+    step1: () => PTD.base + PTD.page,
+    tabMatch: 'page-today',
+    branches: PTD.branches,
+    buyerMode: 'phone1line', agrees: [], captcha: '없음',
+    needsInfo: false, deposit: false,
+    openTime: PTD.openTime, leadDays: PTD.leadDays,
+    flow: 'form', finalButton: '예약 확정', finalMeans: '예약 생성',
+    note: "로그인·자동등록방지 없음. 날짜·시간·인원·이름·연락처를 채워 '03 확인' 화면까지 갑니다. 최종 '예약 확정' 은 직접 클릭합니다",
+  },
+  oas: {
+    key: 'oas', label: OAS.label, base: OAS.base,
+    step1: () => oasUrl(),
+    tabMatch: 'oasismuseum',
+    branches: OAS.branches,
+    buyerMode: 'phone1line', agrees: [], captcha: '없음',
+    needsInfo: false, deposit: false,
+    openTime: OAS.openTime, leadDays: OAS.leadDays,
+    flow: 'form', finalButton: '예약하기', finalMeans: '결제 화면(카드·무통장)으로 이동',
+    note: "로그인·자동등록방지 없음. 시간 버튼을 누르고 이름/연락처/인원/동의를 채웁니다. '예약하기'(결제 화면으로 이동) 는 직접 클릭합니다",
+  },
 };
+/** 앱이 신청서까지 채우고 마지막 버튼은 사람이 누르는 사이트 */
+export const isFormSite = (k) => (SITES[String(k || '')] || {}).flow === 'form';
 export const siteOf = (k) => SITES[String(k || 'keyescape').toLowerCase()] || SITES.keyescape;
 
 /* ===================== 제로월드: rev.make.sel.php ===================== */
@@ -274,6 +317,9 @@ export async function apiTimes(site, zizum, theme, date) {
   if (k === 'zeroworld') return await zwTimes(zizum, theme, date);
   if (k === 'dps') return await dpsTimes(date);                 // 달력 한 장에 그 달 전체 슬롯이 있다
   if (k === 'rhe') return await rheTimes({ branch: zizum, theme, date });
+  if (k === 'jgb') return await JGB_SITE.times({ branch: zizum, theme, date });
+  if (k === 'ptd') return await ptdTimes({ theme, date });
+  if (k === 'oas') return await oasTimes({ theme, date });
   return await keGetTimes(zizum, theme, date);
 }
 export async function apiOpenInfo(site, { zizum, theme, info, date }) {
@@ -282,6 +328,9 @@ export async function apiOpenInfo(site, { zizum, theme, info, date }) {
   if (k === 'zeroworld') return await zwOpenInfo({ zizum, theme, date });
   if (k === 'dps') return await dpsOpenInfo({ date });
   if (k === 'rhe') return await rheOpenInfo({ branch: zizum, date });
+  if (k === 'jgb') return await JGB_SITE.openInfo({ branch: zizum, date });
+  if (k === 'ptd') return await ptdOpenInfo({ date });
+  if (k === 'oas') return await oasOpenInfo({ date });
   return await keOpenInfo({ zizum, theme, info, date });
 }
 export async function apiBranches(site) {
@@ -290,6 +339,9 @@ export async function apiBranches(site) {
   if (k === 'zeroworld') return await zwBranches();
   if (k === 'dps') return SITES.dps.branches;
   if (k === 'rhe') return RHE.branches;
+  if (k === 'jgb') return JGB.branches;
+  if (k === 'ptd') return PTD.branches;
+  if (k === 'oas') return OAS.branches;
   return SITES.keyescape.branches;
 }
 /** 테마(=슬롯 상품) 목록: 키이스케이프/제로월드는 지점별, 단편선은 강남 이야기×시간대 18종, 토끼굴은 테마 2종 */
@@ -298,6 +350,9 @@ export async function apiThemes(site, zizum) {
   if (k === 'naver') return { ok: true, themes: naverProducts().filter(p => p.business === String(zizum)) };
   if (k === 'zeroworld') return await zwThemes(zizum);
   if (k === 'rhe') return await rheThemes(zizum);
+  if (k === 'jgb') return await JGB_SITE.themes(zizum || JGB.branch);
+  if (k === 'ptd') return await ptdThemes();
+  if (k === 'oas') return await oasThemes();
   if (k === 'dps') {
     const themes = await dpsProducts().catch(() => []);
     return { ok: themes.length > 0, themes, msg: themes.length ? '' : 'get_prod_list.cm 이 빈 목록을 주었습니다' };
@@ -308,14 +363,18 @@ export async function apiToday(site, info) {
   const k = siteOf(site).key;
   if (k === 'naver') return naverToday();
   if (k === 'dps') return dpsToday();
-  if (k === 'rhe') return rheToday();
+  if (k === 'rhe' || k === 'jgb') return rheToday();
+  if (k === 'ptd') return ptdToday();
+  if (k === 'oas') return oasToday();
   if (k === 'zeroworld') return zwDate(0);
   const cal = await keGetCalendar(Number(info) || 34).catch(() => null);
   return cal?.calendarData?.today || zwDate(0);
 }
 export { LEAD_DAYS_FALLBACK, DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth };
 export { dpsFiller, dpsBook, dpsPay, dpsSlotRead, dpsOrderRead, dpsLoginRead } from './dps.mjs';
-export { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, rheNoteWindow, rheHtml, isRhePage, parseRhePage, rheFiller, rhePick, rheSlotRead, rheCreateRead } from './rhe.mjs';
+export { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, rheNoteWindow, rheHtml, isRhePage, parseRhePage, rheFiller, rhePick, rheSlotRead, rheCreateRead, rheSubmit, JGB, JGB_SITE, RHE_SITE } from './rhe.mjs';
+export { PTD, ptdCatalog, parsePtdCatalog, ptdDay, ptdRead, ptdPick, ptdSubmit } from './pagetoday.mjs';
+export { OAS, oasUrl, oasSlotRead, oasPick, oasFiller, oasCreateRead, oasSubmit } from './oasis.mjs';
 
 /* ===================== 브라우저 측 (CDP 로 문자열화해 주입) ===================== */
 /** 사이트 탭을 찾거나 연다 (제로월드는 zizum 이 url 에 들어간다) */

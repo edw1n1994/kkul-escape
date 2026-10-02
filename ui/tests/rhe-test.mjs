@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import { RHE, rheUrl, isRhePage, rheOptions, parseRhePage, rhePick, rheFiller, rheCreateRead, rheNoteWindow, rheOpenInfo, rheToday, rheHtml, rheTimes } from '../rhe.mjs';
+import { RHE, rheUrl, isRhePage, rheOptions, parseRhePage, rhePick, rheFiller, rheCreateRead, rheNoteWindow, rheOpenInfo, rheToday, rheHtml, rheTimes, rheSubmit } from '../rhe.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const RES = await readFile(path.join(dir, 'fixture-rhe-reservation.html'), 'utf8');
@@ -306,3 +306,53 @@ test('오픈 정보: 날짜표를 훑어 관측한 창 끝을 다음 안내에 �
   assert.match(info.leadSource, /달력 관측 창 끝/);
 });
 
+
+/* ---------------- rheSubmit: 최종 '예약하기' 게이트 (--final-submit 전용) ---------------- */
+function submitCtx(o = {}) {
+  const v = { branch: '1', theme: '4', date: '2030-01-07', time: '17:35', name: '김토끼', phone: '010-1234-5678', people: '2', ...(o.values || {}) };
+  const fld = (n) => ({ name: n, value: v[n] });
+  const pays = [
+    { value: '21', checked: o.pay !== 'none' && o.pay !== 'card', parentNode: { textContent: ' 가상계좌 ' } },
+    { value: '30', checked: o.pay === 'card' || o.pay === 'both', parentNode: { textContent: '카드결제' } },
+  ];
+  const policy = { name: 'policy', checked: o.policy !== false };
+  const map = { branch: fld('branch'), theme: fld('theme'), date: fld('date'), time: fld('time'), name: fld('name'), phone: fld('phone'), people: fld('people'), policy };
+  const form = { querySelector: (s) => map[(s.match(/\[name="(\w+)"\]/) || [])[1]] || null, querySelectorAll: (s) => (/payment_method/.test(s) ? pays : []) };
+  const nameEl = { form };
+  const btn = { disabled: !!o.disabled, clicks: 0, click() { this.clicks++; } };
+  const window = o.submitted ? { __RHE_SUBMITTED: 1 } : {};
+  const ctx = vm.createContext({
+    window, location: { pathname: o.pathname || '/reservation/create' },
+    document: {
+      querySelector: (s) => (/name="name"/.test(s) ? nameEl : s === '#evePrice' ? { textContent: o.price ?? '56,000' } : null),
+      querySelectorAll: (s) => (s === '#eveReservationBtn' ? (o.noBtn ? [] : [btn]) : []),
+    },
+  });
+  return { btn, run: (x) => vm.runInContext(`(${rheSubmit.toString()})(${JSON.stringify(x)})`, ctx) };
+}
+const SUB = { want: { branch: '1', theme: '4', date: '2030-01-07', time: '17:35' }, name: '김토끼', phone: '010-1234-5678', people: '2', pay: '가상계좌' };
+
+test("최종 예약하기: 신청서가 목표와 모두 맞을 때만 1회 누르고, preview 는 누르지 않는다", () => {
+  const f = submitCtx();
+  const r = f.run(SUB);
+  assert.equal(r.ok, true, r.problems.join(','));
+  assert.equal(f.btn.clicks, 1);
+  const p = submitCtx();
+  assert.equal(p.run({ ...SUB, preview: true }).problems.length, 0);
+  assert.equal(p.btn.clicks, 0);
+});
+
+test('최종 예약하기: 좌표·이름·연락처·인원·결제수단·약관·금액·버튼·중복 중 하나라도 어긋나면 누르지 않는다', () => {
+  const cases = [
+    [{ values: { time: '19:05' } }, /좌표 time/], [{ values: { date: '2030-01-08' } }, /좌표 date/],
+    [{ values: { name: '다른이름' } }, /이름 불일치/], [{ values: { phone: '010-9999-0000' } }, /연락처 불일치/],
+    [{ values: { people: '3' } }, /인원 3≠2/], [{ pay: 'card' }, /가상계좌 아님/], [{ pay: 'both' }, /결제수단 선택 2개/], [{ pay: 'none' }, /결제수단 선택 0개/],
+    [{ policy: false }, /약관 미동의/], [{ price: '인원을 선택해주세요.' }, /금액 표시 없음/],
+    [{ noBtn: true }, /버튼 0개/], [{ disabled: true }, /비활성/], [{ submitted: true }, /이미 예약하기/], [{ pathname: '/reservation' }, /신청서 화면이 아님/],
+  ];
+  for (const [o, re] of cases) {
+    const f = submitCtx(o);
+    assert.match(f.run(SUB).problems.join('|'), re);
+    assert.equal(f.btn.clicks, 0);
+  }
+});

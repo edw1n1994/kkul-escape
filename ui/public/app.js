@@ -6,10 +6,22 @@ const isZw = () => S.site === 'zeroworld';
 const isDps = () => S.site === 'dps';
 const isNaver = () => S.site === 'naver';
 const isRhe = () => S.site === 'rhe';
+/** 신청서형 사이트 — 앱이 시간 선택과 신청서 입력까지 하고, 마지막 버튼(서버가 알려 주는 finalButton) 은 사람이 누른다 */
+const FORM_SITES = new Set(['rhe', 'jgb', 'ptd', 'oas']);
+const isForm = (k = S.site) => FORM_SITES.has(k);
+const finalBtn = () => S.finalButton || '예약하기';
+/** 받침에 따라 조사를 고른다 ('예약하기'는 / '예약 확정'은) */
+const josa = (w, withJong, without) => { const c = String(w).charCodeAt(String(w).length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 ? withJong : without; };
+const FORM_HINT = {
+  rhe: '토끼굴은 <b>오늘부터 +6일까지만 조회되는 롤링 창</b>입니다.',
+  jgb: '지구별은 <b>지점마다 예약 창이 다릅니다</b> (대구점 오늘+14일, 홍대 두 지점 오늘+6일 — 날짜표로 실제 창 끝을 읽습니다).',
+  ptd: '오늘의 한 페이지는 <b>예약 서버에 시간표가 있는 마지막 날짜</b>까지 예약됩니다 (지금은 오늘+6일).',
+  oas: '오아시스 뮤지엄은 <b>매일 자정에 6일 뒤 날짜가 열립니다</b> (사이트 안내문).',
+};
 /** 네이버 무통장입금 예약 확정 — 서버가 켜 둔 경우(KKUL_NAVER_BANK=1)에만 화면에 보이고 실행에 실린다 */
 const bankOn = () => isNaver() && !!S.naverBank && !!$('naverConfirm')?.checked;
 /** 사이트별 '예약하기' 자동 클릭 기본값 — 단편선은 캡차가 없고 예약좌표 검증이 가능해 on, 키이스케이프는 off (토끼굴은 자동 클릭 자체가 없다) */
-const autoKey = () => 'ke.autosub' + (isNaver() ? '.naver' : isDps() ? '.dps' : isZw() ? '.zeroworld' : isRhe() ? '.rhe' : '');
+const autoKey = () => 'ke.autosub' + (isNaver() ? '.naver' : isDps() ? '.dps' : isZw() ? '.zeroworld' : isForm() ? '.' + S.site : '');
 const autoDefault = () => (isDps() || isNaver() ? '1' : '0');
 const subWanted = () => (localStorage.getItem(autoKey()) !== null ? localStorage.getItem(autoKey()) : autoDefault()) === '1';
 function renderTabs() {
@@ -22,16 +34,16 @@ function copySite() {
   $('naverOpen').style.display = isNaver() ? '' : 'none';
   $('nameWrap').style.display = $('hpWrap').style.display = isNaver() ? 'none' : '';
   $('bLock').style.display = isNaver() ? 'none' : '';
-  $('openHint').innerHTML = isNaver() ? '요일별 참고 시간표입니다. 실제 회차·예약 가능 여부는 네이버 화면에서 확인합니다. 예약자 정보는 네이버 계정 정보를 사용합니다.' : isRhe()
-    ? '토끼굴은 <b>오늘부터 +6일까지만 조회되는 롤링 창</b>입니다. 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 조회되기 시작하는 시각에 맞춰 시간 버튼이 자동 클릭됩니다. 이 사이트는 오픈 시각 공지가 없어 달력이 밀리는 시각을 자정으로 봅니다.'
+  $('openHint').innerHTML = isNaver() ? '요일별 참고 시간표입니다. 실제 회차·예약 가능 여부는 네이버 화면에서 확인합니다. 예약자 정보는 네이버 계정 정보를 사용합니다.' : isForm()
+    ? (FORM_HINT[S.site] || '') + ' 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 열리는 시각에 맞춰 시간 버튼이 자동 클릭됩니다.' + (S.site === 'oas' ? '' : ' 이 사이트는 오픈 시각 공지가 없어 창이 밀리는 시각을 자정으로 봅니다.')
     : zw
       ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
       : '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.';
-  $('step2Title').firstChild.textContent = isNaver() ? '네이버 예약 상태 ' : isRhe() ? '신청서 상태 ' : zw ? '예약 폼 상태 ' : 'Step2 도착 상태 ';
-  if ($('rhePersonWrap')) $('rhePersonWrap').style.display = isRhe() ? '' : 'none';   // '예약 인원' 은 토끼굴 신청서에만 있다
+  $('step2Title').firstChild.textContent = isNaver() ? '네이버 예약 상태 ' : isForm() ? '신청서 상태 ' : zw ? '예약 폼 상태 ' : 'Step2 도착 상태 ';
+  if ($('rhePersonWrap')) $('rhePersonWrap').style.display = isForm() ? '' : 'none';   // '예약 인원' 은 신청서형 사이트에만 있다
   // '예약하기' 자동 클릭: 키이스케이프 Step2(opt-in) · 단편선(기본 on — 캡차 없음) · 제로월드(사용자 코드 입력 후 opt-in)
-  // 토끼굴은 자동 클릭 옵션을 아예 보여주지 않는다 — 신청서 제출이 예약 생성 + 가상계좌 발급이라 사람이 누른다.
-  $('subRow').style.display = isRhe() ? 'none' : 'flex';
+  // 신청서형 사이트: 마지막 버튼(예약 생성·결제 화면 이동) 자동 클릭은 사이트별 opt-in (기본 off, 켤 때 확인)
+  $('subRow').style.display = 'flex';
   renderSub();
 }
 /** 자동 클릭 두 개(예약하기 / 결제하기) 의 라벨·체크박스·경고 문구를 현재 사이트/상태에 맞게 다시 그린다 */
@@ -41,8 +53,10 @@ function renderSub() {
   if (pay) pay.checked = dps && localStorage.getItem('ke.paybtn') === '1';
   $('payWrap').style.display = dps ? 'inline-flex' : 'none';
   $('autosub').checked = subWanted();
-  $('autosubLabel').textContent = isNaver() ? '신청서까지 자동 진행' : dps ? "'예약하기' 자동 클릭 (단편선 기본값)" : "자동예약";
-  $('subHint').innerHTML = isNaver() ? (bankOn() ? '무통장입금 예약 확정까지 진행합니다. 실제 입금은 직접 진행하세요.' : S.naverBank ? '무통장입금 예약 확정 옵션을 켜면 최종 확정까지 진행합니다.' : '신청서까지 자동 진행합니다. 최종 확인·결제는 네이버 화면에서 직접 하세요.') : dps
+  $('autosubLabel').textContent = isNaver() ? '신청서까지 자동 진행' : dps ? "'예약하기' 자동 클릭 (단편선 기본값)" : isForm() ? `최종 '${finalBtn()}'까지 자동 클릭` : "자동예약";
+  $('subHint').innerHTML = isForm() ? ($('autosub').checked
+    ? `<b style="color:#f55">신청서가 목표와 모두 맞으면 '${esc(finalBtn())}'을 1회 자동 클릭합니다 — ${esc(S.finalMeans || '예약 생성')}</b>. 실패해도 다시 누르지 않습니다.`
+    : `마지막 '${esc(finalBtn())}'${josa(finalBtn(), '은', '는')} 직접 클릭합니다 (${esc(S.finalMeans || '예약 생성')}).`) : isNaver() ? (bankOn() ? '무통장입금 예약 확정까지 진행합니다. 실제 입금은 직접 진행하세요.' : S.naverBank ? '무통장입금 예약 확정 옵션을 켜면 최종 확정까지 진행합니다.' : '신청서까지 자동 진행합니다. 최종 확인·결제는 네이버 화면에서 직접 하세요.') : dps
     ? ('단편선은 캡차가 없어 <b>예약하기 자동 클릭이 기본</b>입니다. 클릭 후 결제화면에서 이름/연락처/입금자명 · 무통장입금 · <b>약관 전체동의</b>까지 자동 처리하고, '
       + (pay && pay.checked
         ? '마지막 <b style="color:#f55">\'결제하기\'까지 자동으로 1회 클릭합니다 — 결제가 실제로 진행됩니다</b>.'
@@ -51,7 +65,9 @@ function renderSub() {
 }
 /** 자동 제출은 확인 후에만 켠다 (제출 = 결제 화면으로 넘어가는 동작이기 때문) */
 function onAutoSub() {
-  if ($('autosub').checked && !confirm(isNaver() ? '선택한 날짜와 시간대를 확인하고 네이버 신청서까지 자동으로 진행합니다. 켤까요?' : isZw()
+  if ($('autosub').checked && !confirm(isForm()
+    ? `"${finalBtn()}" 까지 자동으로 1회 클릭합니다.\n\n• 예약좌표·이름·연락처·인원·결제수단·약관·금액이 목표와 모두 맞을 때만 누릅니다\n• 누르면 ${S.finalMeans || '예약 생성'}입니다\n• 응답이 불명확해도 다시 누르지 않습니다\n\n켤까요?`
+    : isNaver() ? '선택한 날짜와 시간대를 확인하고 네이버 신청서까지 자동으로 진행합니다. 켤까요?' : isZw()
     ? '자동입력방지 코드를 직접 입력한 뒤 예약하기를 1회 클릭합니다. 코드가 틀리면 직접 수정해야 합니다. 켤까요?'
     : isDps()
     ? '"예약하기" 를 자동으로 1회 클릭합니다.\n\n• 예약좌표(상품/날짜) · 로그인 · 화면에 보이는 예약하기 버튼 1개를 확인한 뒤 누릅니다\n• 클릭하면 주문이 만들어지고 결제화면으로 넘어갑니다\n• 이름/연락처/입금자명 · 무통장입금 · 약관 전체동의가 자동으로 채워지며 중복 클릭은 하지 않습니다\n• 최종 "결제하기" 는 따로 켜지 않는 한 사람이 클릭합니다\n\n이대로 켤까요?'
@@ -152,6 +168,7 @@ async function loadEnv() {
   if (S.cdp !== e.cdp_port) { lockVersion++; S.unlock = null; }
   S.cdp = e.cdp_port;
   S.naverBank = !!e.naverBank;
+  S.finalButton = e.finalButton || ''; S.finalMeans = e.finalMeans || '';
   if (e.cdp !== 'OK' && S.site === 'keyescape' && !S.unlockFixing) { lockVersion++; updateLock('disconnected', '개발자모드 · 브라우저 연결 필요'); }
   $('reconnectBrowser').style.display = e.desktop ? '' : 'none';
   if (e.sites) S.sites = e.sites;
@@ -193,8 +210,8 @@ async function loadThemes() {
 }
 function onTheme() {
   const t = cur(); if (!t) return;
-  $('themeMeta').innerHTML = isNaver() ? '네이버 로그인 필요 · 예약창에서 계정 정보를 확인하세요.' : isRhe()
-    ? `theme=<b>${t.theme}</b> · ${t.personRange ? t.personRange + '명' : '인원 -'} · ${t.genre || '-'} · ${t.play || '-'}분 · 신청서까지 자동 진행 후 최종 '예약하기' 는 직접 클릭`
+  $('themeMeta').innerHTML = isNaver() ? '네이버 로그인 필요 · 예약창에서 계정 정보를 확인하세요.' : isForm()
+    ? `theme=<b>${t.theme}</b> · ${t.personRange ? t.personRange + '명' : '인원 -'} · ${t.genre || '-'} · ${t.play ? t.play + '분' : '-'} · 신청서까지 자동 진행 후 최종 '${esc(finalBtn())}'${josa(finalBtn(), '은', '는')} 직접 클릭`
     : isZw()
     ? `themeNum=<b>${t.theme}</b> · ${t.minPerson ? t.minPerson + '인~' : '인원 -'} · 난이도 ${'●'.repeat(Number(t.level) || 0) || '-'} · ${t.genre || '-'} · ${t.play || '-'}분`
     : `themeNum=<b>${t.theme}</b> · themeInfoNum=<b>${t.info}</b> · 난이도 ${t.level || '-'} · ${t.genre || '-'} · ${t.play || '-'}분`;
@@ -345,8 +362,8 @@ async function fire(dry, wo) {
     times: S.time, deadline: DEF.deadline, name: name || DEF.name, hp: hp || DEF.hp,
     dep: ($('dep').value || '').trim(),
   };
-  if (isRhe()) {
-    // 토끼굴은 오픈 시각 공지가 없어 예약 창(오늘+6)이 밀리는 자정으로 본다 → 조회가 시작되는 순간을 넓게 잡는다
+  if (isForm()) {
+    // 신청서형 사이트는 오픈 시각 공지가 없어 예약 창이 밀리는 자정으로 본다 → 조회가 시작되는 순간을 넓게 잡는다
     body.deadline = Math.max(DEF.deadline, 600);
     const p = $('rhePerson') ? $('rhePerson').value : '';
     if (p) body.person = p;   // 신청서의 '예약 인원' — 미선택이면 러너가 화면의 테마 최소 인원으로 채운다
@@ -365,7 +382,8 @@ async function fire(dry, wo) {
     if (new Date(iso).getTime() < Date.now() && !confirm('이미 오픈된 날짜입니다. 즉시 시도합니다. 계속할까요?')) return;
     body.openAt = iso;
   }
-  if (!dry && !wo && $('autosub') && !isRhe()) {
+  if (!dry && !wo && $('autosub') && isForm()) body.finalSubmit = $('autosub').checked;   // 신청서형: 최종 버튼 자동 1회 (opt-in)
+  if (!dry && !wo && $('autosub') && !isForm()) {
     body.autoSubmit = $('autosub').checked;      // 단편선은 서버가 autoSubmit===false 를 --no-auto-submit 으로 바꾼다
     if (isDps() && $('paybtn').checked) body.paySubmit = true;   // 최종 '결제하기' — 이 체크박스에서만 켜진다 (기본 off)
   }
@@ -400,16 +418,17 @@ async function loadStep2() {
     $('step2').innerHTML = [cell('예약 상태', d.msg || (d.loaded ? '회차 확인됨' : '대기')), cell('선택 날짜', d.date), cell('목표 시간', S.time)].join('');
     return;
   }
-  if (d.site === 'rhe') {
-    if (!d.onCreate && !d.onDone) { $('step2').innerHTML = `<div><b>waiting</b>신청서 페이지 아님 · ${esc((d.href || d.msg || '').slice(-40))}</div>`; return; }
+  if (isForm(d.site)) {
+    if (!d.onCreate && !d.onDone) { $('step2').innerHTML = `<div><b>waiting</b>신청서 화면 아님 · ${esc((d.href || d.msg || '').slice(-40))}</div>`; return; }
+    const coord = Object.entries(d.hidden || {}).filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k}=${v}`).join(' ');
     $('step2').innerHTML = [
-      cell('예약좌표', Object.entries(d.hidden || {}).map(([k, v]) => `${k}=${v}`).join(' ') || d.summary),
+      cell('예약좌표', coord || [d.date, d.slotLabel || d.slot].filter(Boolean).join(' ') || d.summary || '-'),
       cell('이름/연락처', `${d.name || '-'} / ${d.phone || '-'}`),
       cell('인원/요금', `${d.people || '-'}명 · ${d.price || '-'}`),
-      cell('결제수단', d.pay || '미선택'),
-      cell('약관', d.policy ? '✅ 동의됨' : '⚠ 직접 동의 필요'),
+      d.pay ? cell('결제수단', d.pay) : '',
+      d.policy == null ? '' : cell('약관', d.policy ? '✅ 동의됨' : '⚠ 직접 동의 필요'),
       fillCell({ fillMs: d.fillMs != null ? d.fillMs : null, fillErr: d.fillMissing ? '누락: ' + d.fillMissing : (d.fillState === 'done' ? '' : '대기') }),
-      cell('예약하기', d.onDone ? '완료 화면(/reservation/done) 입니다' : '사람 클릭 — 누르면 예약 생성 + 가상계좌 발급'),
+      cell(finalBtn(), d.onDone ? '완료·결제 화면입니다' : `사람 클릭 — 누르면 ${esc(S.finalMeans || '예약 생성')}`),
     ].join('');
     return;
   }

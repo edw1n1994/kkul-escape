@@ -24,7 +24,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { BRANCHES, getThemes, getTimes, getCalendar, cdpList, cdp, keTab, STEP2_READ, openInfo, noteWindow, personal } from './lib.mjs';
-import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS, rheNoteWindow, rheCreateRead, RHE } from './sites.mjs';
+import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS, rheNoteWindow, rheCreateRead, RHE, JGB_SITE, isFormSite, ptdCatalog, parsePtdCatalog, ptdDay, ptdRead, oasCreateRead } from './sites.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8899);
@@ -132,6 +132,7 @@ function startPreparedRun(body) {
   if (site === 'dps' && body.agreeAll === false) args.push('--no-agree-all');   // 약관 전체동의 자동 체크(기본 on) 를 끄는 경우
   if (site === 'dps' && body.paySubmit) args.push('--pay-submit');              // 최종 '결제하기' — 화면 체크박스 전용, 기본 off
   if (site === 'dps' && body.payTotal) args.push('--pay-total', String(body.payTotal).replace(/[^0-9]/g, ''));
+  if (isFormSite(site) && body.finalSubmit === true) args.push('--final-submit');   // 신청서형 최종 버튼 자동 1회 — 화면 체크박스(opt-in) 전용
   if (body.humanWait) args.push('--human-wait', String(body.humanWait));   // 사람 클릭 대기 창(초)
   if (body.watchOnly) args.push('--watch-only');     // 디버거 미연결 감시 전용 (차단과 무관하게 동작)
   if (body.dry) args.push('--dry');
@@ -208,9 +209,10 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         desktop: DESKTOP, site: site.key, siteLabel: site.label, captcha: site.captcha, siteNote: site.note,
         deposit: !!site.deposit, loginRequired: site.login === 'required', naverBank: NAVER_BANK,
+        flow: site.flow || '', finalButton: site.finalButton || '', finalMeans: site.finalMeans || '',
         sites: Object.values(SITES).map((s) => ({
           key: s.key, label: s.label, captcha: s.captcha,
-          deposit: !!s.deposit, login: s.login === 'required' ? 'required' : 'none',
+          deposit: !!s.deposit, login: s.login === 'required' ? 'required' : 'none', flow: s.flow || '',
         })),
         cdp: list ? 'OK' : 'DOWN', cdp_port: browserPort(a.cdp),
         tabs: list ? list.filter((t) => t.type === 'page').map((t) => t.url.slice(0, 100)) : [],
@@ -280,18 +282,29 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { ok: true, site, serverToday: today, days: out });
       }
-      if (site === 'rhe') {   // 오늘~오늘+6 롤링 창 — 창 밖 날짜는 서버가 홈으로 되돌린다 → 그 뒤는 물지 않는다
+      if (site === 'ptd') {   // 카탈로그 한 장(JSON)에 창 전체 슬롯이 있다 → 날짜마다 받지 않는다
+        let cat = null;
+        try { cat = parsePtdCatalog(await ptdCatalog(), today); } catch (e) { return json(res, 200, { ok: false, msg: String(e.message).slice(0, 90) }); }
+        for (let i = 0; i < days; i++) {
+          const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
+          const r = ptdDay(cat, a.theme, d);
+          out.push({ date: d, dow: '일월화수목금토'[new Date(d + 'T00:00:00Z').getUTCDay()], open: r.open, total: r.total, msg: r.msg || '' });
+        }
+        return json(res, 200, { ok: true, site, serverToday: today, days: out });
+      }
+      if (site === 'rhe' || site === 'jgb' || site === 'oas') {   // 오늘~창 끝 롤링 창 — 창 밖 날짜는 서버가 되돌린다 → 그 뒤는 물지 않는다
         let outOfWindow = false;
         for (let i = 0; i < days; i++) {
           const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
           const dow = '일월화수목금토'[new Date(d + 'T00:00:00Z').getUTCDay()];
-          if (outOfWindow) { out.push({ date: d, dow, open: 0, total: 0, msg: `예약 창 밖 (오늘부터 +${RHE.leadDays}일까지만 조회됨)` }); continue; }
+          if (outOfWindow) { out.push({ date: d, dow, open: 0, total: 0, msg: '예약 창 밖' }); continue; }
           const r = await apiTimes(site, Number(a.zizum), Number(a.theme), d);
           out.push({ date: d, dow, open: r.slots.filter((s) => s.open).length, total: r.slots.length, msg: r.msg || '' });
           if (r.notOpen) { outOfWindow = true; continue; }
           await nap(160);
         }
-        rheNoteWindow(today, out);   // 관측된 창 끝을 기억 → /api/openinfo 가 재스캔 없이 답한다
+        if (site === 'rhe') rheNoteWindow(today, out, a.zizum);   // 관측된 창 끝을 기억 → /api/openinfo 가 재스캔 없이 답한다
+        if (site === 'jgb') JGB_SITE.noteWindow(today, out, a.zizum);
         return json(res, 200, { ok: true, site, serverToday: today, days: out });
       }
       for (let i = 0; i < days; i++) {
@@ -343,15 +356,18 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/step2') {
       const site = siteOf(a.site);
       if (site.key === 'naver') return json(res, 200, { site: 'naver', ...await naverStatus(browserPort(a.cdp), a.zizum, a.theme, a.date, a.time) });
-      const t = (site.key === 'zeroworld' || site.key === 'rhe')
+      const form = isFormSite(site.key);
+      const t = (site.key === 'zeroworld' || form)
         ? await siteTab(browserPort(a.cdp), site.key, a.zizum, false)
         : await keTab(browserPort(a.cdp), null, false);
       if (!t.ok) return json(res, 200, { ok: false, msg: t.msg });
       const c = cdp(t.tab.webSocketDebuggerUrl);
       try {
         await c.ready;
-        await c.send('Runtime.enable');
-        const st = await c.evaluate(site.key === 'zeroworld' ? ZW_READ : site.key === 'rhe' ? `(${rheCreateRead.toString()})()` : STEP2_READ);
+        // 신청서형 사이트는 Runtime.enable 없이 읽는다 (오늘의 한 페이지는 Runtime 도메인을 켜면 개발자도구 감지 화면으로 바뀐다)
+        if (!form) await c.send('Runtime.enable');
+        const read = site.key === 'ptd' ? ptdRead : site.key === 'oas' ? oasCreateRead : rheCreateRead;
+        const st = await c.evaluate(site.key === 'zeroworld' ? ZW_READ : form ? `(${read.toString()})()` : STEP2_READ);
         return json(res, 200, { ok: true, site: site.key, ...st });
       } catch (e) { return json(res, 200, { ok: false, msg: String(e.message) }); }
       finally { c.ws.close(); }

@@ -94,9 +94,11 @@ try{
   const body=fixture.calls.at(-1);assert.equal(body.site,key);assert.equal(body.times,'19:20');assert.equal(body.date,'2099-09-17');assert.equal(body.paySubmit,undefined);
   if(key==='naver'){assert.equal(body.name,undefined);assert.equal(body.bankConfirm,true);assert.equal(body.bankMax,70000);}else {assert.equal(body.name,'테스트유저');assert.equal(body.bankConfirm,undefined);}
   assert.equal(await ev("$('rhePersonWrap').style.display"),key==='rhe'?'':'none');   // '예약 인원' 은 토끼굴 신청서에만 있다
-  if(key==='rhe'){   // 인원·넓은 마감 창은 실려가지만 '예약하기' 자동 클릭 항목은 아예 없다 (최종 클릭은 사람)
+  if(key==='rhe'){   // 인원·넓은 마감 창은 실려가고, 최종 '예약하기' 자동 클릭은 체크박스로만 켠다 (기본 꺼짐)
    assert.equal(body.person,'4');assert.ok(body.deadline>=600);assert.equal(body.autoSubmit,undefined);assert.equal(body.paySubmit,undefined);
-   assert.equal(await ev("$('subRow').style.display"),'none');assert.match(await ev("$('autoHelp').textContent"),/직접 눌러 주세요/);}
+   assert.equal(body.finalSubmit,false);assert.match(await ev("$('autosubLabel').textContent"),/최종 '예약하기'까지 자동 클릭/);
+   assert.equal(await ev("$('subRow').style.display"),'flex');assert.match(await ev("$('autoHelp').textContent"),/직접 눌러 주세요/);}
+  else if(key!=='naver')assert.equal(body.finalSubmit,undefined);
   else assert.equal(body.person,undefined);
   assert.equal(await ev("$('siteFields').disabled"),true);assert.equal(await ev("document.querySelector('[data-design-link]')"),null);
   if(key==='naver'){
