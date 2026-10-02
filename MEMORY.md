@@ -94,6 +94,12 @@
   실페이지 로그인 및 목요일 19:20 라벨 확인. 사전 테스트로 다른 회차 예약·결제를 제출하지 않았다.
 - 중지: 해당 작업 폴더에 `STOP` 파일 생성. 이 파일은 재실행을 위한 명시적 정리 전까지 유지.
 
+## 릴리즈 1.3.0 (2026-10-02, GitHub v1.3.0 = 905248e)
+
+- https://github.com/edw1n1994/kkul-escape/releases/tag/v1.3.0 — ZIP 3종 + SHA256SUMS-1.3.0.txt, 다운로드 재검증 일치, latest.
+- 검증: 문법 67 · 단위 86/86 · 브라우저 테스트 5종(격리 Chrome) · ZIP CRC · codesign · 버전 1.3.0 · runtime 21종 == HEAD · arm64/x64 스모크 OK. Windows 는 패키지만.
+- 1.2.1 ZIP 은 `.local/backups/release-1.2.1/`. 토끼굴 10/10 예약 대기는 이 코드로 재기동(18:11, --final-submit).
+
 ## 1.3.0 준비 (2026-10-02 18:10~)
 
 - 사용자 요청: `--final-submit` 을 다음 버전에 넣고, 최종 버튼 자동 클릭이 없던 사이트도 누를 수 있게.
@@ -105,7 +111,7 @@
 ## 토끼굴 실예약 대기 (2026-10-02 17:46 KST 설정)
 
 - 사용자 요청: 두껍아(theme 4) 2026-10-10(토) 17:35, 2명. 예약자 이름·연락처는 실행 인자로만 전달(저장소에 없음).
-- `ui/server.mjs`(8899, CDP 9222 = 사용자 Chrome) 를 `caffeinate -i` 로 분리 실행. 로그 `.local/reservations/rhe-2026-10-10-1735/server.log`, 실행 기록 `ui/runs.log`.
+- `ui/server.mjs`(8899, CDP 9222 = 사용자 Chrome) 를 `caffeinate -i` 로 분리 실행(18:11 에 1.3.0 코드로 재기동, 대기 1건만). 로그 `.local/reservations/rhe-2026-10-10-1735/server.log`, 실행 기록 `ui/runs.log`.
 - 오픈 가정 2026-10-04 00:00 KST(창 오늘+6, 공지 없음), 마감 600초. 시간 버튼·신청서 자동.
 - 17:56 사용자 요청(퇴근): **최종 '예약하기'까지 자동** — 새 옵션 `--final-submit`(server body `finalSubmit:true`, 토끼굴·지구별 전용, 기본 off).
   `rheSubmit` 게이트(좌표4·이름·연락처·인원·가상계좌·약관·금액·버튼1개·첫 클릭) 통과 시 1회만 클릭, 응답 불명확해도 재클릭 없음.
