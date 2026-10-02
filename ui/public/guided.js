@@ -45,10 +45,10 @@
     $('verifyLogin').hidden = !(isNaver() || isDps());
     text('accountHelp', isNaver() ? '네이버 계정의 예약자 정보를 사용해요.' : '입력한 이름과 연락처는 이 앱에 저장돼 다음에도 사용할 수 있어요.');
     $('paymentOptions').hidden = !isDps();
-    $('naverBankOptions').hidden = !isNaver();
+    $('naverBankOptions').hidden = !isNaver() || !S.naverBank;
     $('naverBankLimit').hidden = !$('naverConfirm').checked;
 
-    text('autoHelp', isRhe() ? '시간 버튼까지 자동으로 누르고 신청서(이름·연락처·인원·결제수단·약관)를 채워요. 최종 ‘예약하기’는 예약 생성 + 가상계좌 발급이라 직접 눌러 주세요.' : isNaver() ? ($('naverConfirm').checked ? '무통장입금 예약 확정까지 진행해요. 계좌·입금 기한 확인과 송금은 직접 해 주세요.' : '무통장입금 예약 확정까지 자동으로 진행하려면 아래 옵션을 켜 주세요.') : isZw() ? '자동입력방지 코드를 직접 입력하면 예약하기를 눌러요.' : isDps() ? ($('paybtn').checked ? '최종 결제하기까지 자동 클릭하도록 설정되어 있어요.' : '예약하기까지 진행해요. 최종 결제는 직접 확인해 주세요.') : '체크박스는 자동으로 눌러요. 문제가 나오면 직접 풀어 주세요. 인증 후 예약하기를 눌러요.');
+    text('autoHelp', isRhe() ? '시간 버튼까지 자동으로 누르고 신청서(이름·연락처·인원·결제수단·약관)를 채워요. 최종 ‘예약하기’는 예약 생성 + 가상계좌 발급이라 직접 눌러 주세요.' : isNaver() ? (bankOn() ? '무통장입금 예약 확정까지 진행해요. 계좌·입금 기한 확인과 송금은 직접 해 주세요.' : S.naverBank ? '무통장입금 예약 확정까지 자동으로 진행하려면 아래 옵션을 켜 주세요.' : '신청서까지 자동으로 진행해요. 최종 확인·결제는 네이버 화면에서 직접 해 주세요.') : isZw() ? '자동입력방지 코드를 직접 입력하면 예약하기를 눌러요.' : isDps() ? ($('paybtn').checked ? '최종 결제하기까지 자동 클릭하도록 설정되어 있어요.' : '예약하기까지 진행해요. 최종 결제는 직접 확인해 주세요.') : '체크박스는 자동으로 눌러요. 문제가 나오면 직접 풀어 주세요. 인증 후 예약하기를 눌러요.');
     $('wizardBack').disabled = step === 0 || stopping;
     text('wizardBack', running || busy ? '대기 중단' : '이전');
     $('wizardBack').hidden = finished;

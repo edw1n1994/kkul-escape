@@ -170,8 +170,8 @@ node ui/runner.mjs --site rhe --zizum 1 --theme 5 --date 2026-10-07 --times 11:2
 | 클릭 동작 | 사이트 JS 가 `#eveSubmitForm` 의 hidden 4종 + `_token` 을 좌표로 채워 **submit** → `POST /reservation/create`. 우리가 POST 를 조작하지 않는다 |
 | 신청서 | `name`(maxlength 10) · `phone`(mask `00Z-000Z-0000`) · `people` select · `payment_method` radio(실측 1종 `21`=가상계좌) · `policy` 체크박스 · 요금표 `div#hiddenData` |
 | 제출 | `#eveReservationBtn` → AJAX `POST /reservation/payment` → `/reservation/done`. **이 버튼이 예약 생성 + 가상계좌 발급(입금 의무)** |
-| 오픈 규칙 | 공지가 없다. 달력이 오늘~오늘+7 롤링 창이고, 창 밖 날짜는 서버가 **302로 홈으로** 되돌린다 → openInfo 는 '창이 밀리는 시각 = 00:00' 으로 안내 |
-| 세션 | 쿠키 없이 `?date=` 를 처음 찍으면 튕긴다 → 어댑터가 쿠키를 받아 같은 세션으로 재시도한다 |
+| 오픈 규칙 | 공지가 없다. 사이트 달력은 오늘+7 까지 그리지만 서버는 오늘~오늘+6 롤링 창만 주고, 창 밖 날짜는 **302로 홈으로** 되돌린다 → openInfo 는 '창이 밀리는 시각 = 00:00' 으로 안내 |
+| 세션 | 쿠키 없이 `?date=` 를 처음 찍으면 튕길 수 있다 → 어댑터가 쿠키를 받아 같은 세션으로 재시도한다. Laravel 이 응답마다 `XSRF-TOKEN`/세션 값을 새로 주므로 **같은 이름은 덮어쓴다** (덧붙이면 8KB 를 넘어 HTTP 400) |
 
 정책: 시간 버튼 클릭과 신청서(이름·연락처·인원·결제수단·약관) 자동 입력까지는 허용,
 **최종 '예약하기'는 절대 자동 클릭하지 않는다** (단편선의 '결제하기'와 같은 취급 — 화면에서 체크박스 자체를 숨긴다).

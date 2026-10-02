@@ -6,6 +6,8 @@ const isZw = () => S.site === 'zeroworld';
 const isDps = () => S.site === 'dps';
 const isNaver = () => S.site === 'naver';
 const isRhe = () => S.site === 'rhe';
+/** 네이버 무통장입금 예약 확정 — 서버가 켜 둔 경우(KKUL_NAVER_BANK=1)에만 화면에 보이고 실행에 실린다 */
+const bankOn = () => isNaver() && !!S.naverBank && !!$('naverConfirm')?.checked;
 /** 사이트별 '예약하기' 자동 클릭 기본값 — 단편선은 캡차가 없고 예약좌표 검증이 가능해 on, 키이스케이프는 off (토끼굴은 자동 클릭 자체가 없다) */
 const autoKey = () => 'ke.autosub' + (isNaver() ? '.naver' : isDps() ? '.dps' : isZw() ? '.zeroworld' : isRhe() ? '.rhe' : '');
 const autoDefault = () => (isDps() || isNaver() ? '1' : '0');
@@ -21,7 +23,7 @@ function copySite() {
   $('nameWrap').style.display = $('hpWrap').style.display = isNaver() ? 'none' : '';
   $('bLock').style.display = isNaver() ? 'none' : '';
   $('openHint').innerHTML = isNaver() ? '요일별 참고 시간표입니다. 실제 회차·예약 가능 여부는 네이버 화면에서 확인합니다. 예약자 정보는 네이버 계정 정보를 사용합니다.' : isRhe()
-    ? '토끼굴은 <b>오늘부터 +7일까지만 조회되는 롤링 창</b>입니다. 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 조회되기 시작하는 시각에 맞춰 시간 버튼이 자동 클릭됩니다. 이 사이트는 오픈 시각 공지가 없어 달력이 밀리는 시각을 자정으로 봅니다.'
+    ? '토끼굴은 <b>오늘부터 +6일까지만 조회되는 롤링 창</b>입니다. 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 조회되기 시작하는 시각에 맞춰 시간 버튼이 자동 클릭됩니다. 이 사이트는 오픈 시각 공지가 없어 달력이 밀리는 시각을 자정으로 봅니다.'
     : zw
       ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
       : '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.';
@@ -40,7 +42,7 @@ function renderSub() {
   $('payWrap').style.display = dps ? 'inline-flex' : 'none';
   $('autosub').checked = subWanted();
   $('autosubLabel').textContent = isNaver() ? '신청서까지 자동 진행' : dps ? "'예약하기' 자동 클릭 (단편선 기본값)" : "자동예약";
-  $('subHint').innerHTML = isNaver() ? ($('naverConfirm')?.checked ? '무통장입금 예약 확정까지 진행합니다. 실제 입금은 직접 진행하세요.' : '무통장입금 예약 확정 옵션을 켜면 최종 확정까지 진행합니다.') : dps
+  $('subHint').innerHTML = isNaver() ? (bankOn() ? '무통장입금 예약 확정까지 진행합니다. 실제 입금은 직접 진행하세요.' : S.naverBank ? '무통장입금 예약 확정 옵션을 켜면 최종 확정까지 진행합니다.' : '신청서까지 자동 진행합니다. 최종 확인·결제는 네이버 화면에서 직접 하세요.') : dps
     ? ('단편선은 캡차가 없어 <b>예약하기 자동 클릭이 기본</b>입니다. 클릭 후 결제화면에서 이름/연락처/입금자명 · 무통장입금 · <b>약관 전체동의</b>까지 자동 처리하고, '
       + (pay && pay.checked
         ? '마지막 <b style="color:#f55">\'결제하기\'까지 자동으로 1회 클릭합니다 — 결제가 실제로 진행됩니다</b>.'
@@ -149,6 +151,7 @@ async function loadEnv() {
   if (S.site !== site || S.runEpoch !== epoch) return;
   if (S.cdp !== e.cdp_port) { lockVersion++; S.unlock = null; }
   S.cdp = e.cdp_port;
+  S.naverBank = !!e.naverBank;
   if (e.cdp !== 'OK' && S.site === 'keyescape' && !S.unlockFixing) { lockVersion++; updateLock('disconnected', '개발자모드 · 브라우저 연결 필요'); }
   $('reconnectBrowser').style.display = e.desktop ? '' : 'none';
   if (e.sites) S.sites = e.sites;
@@ -219,11 +222,14 @@ async function loadMatrix() {
 }
 function noOpen() {
   $('openInfo').innerHTML = '이미 예약이 열린 날짜입니다 — <b>아직 오픈 전인 날짜</b>만 대기/시도 대상으로 다룹니다.';
+  // 단계별 화면은 openInfo 가 접힌 상세 영역 안이라 안 보인다 → 화면 오류줄(guided.js 의 alert)로 알린다
+  if (window.bookingUI) alert('이미 예약이 열린 날짜예요. 예약 사이트에서 바로 예약하거나, ‘오픈 대기’ 날짜를 골라 주세요.');
 }
 function pickDate(d, force) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) { alert('YYYY-MM-DD 형식으로 입력하세요'); return; }
   const row = S.matrix.find((x) => x.date === d);
   if (!force && row && row.total > 0) return noOpen();
+  if (window.bookingUI) alert('');   // noOpen 안내를 지운다 (단계별 화면의 alert = 오류줄)
   S.date = d; S.time = ''; OPEN_ISO = null; $('dateInput').value = d;
   refreshUI();
   document.querySelectorAll('.dcell').forEach((c) => c.classList.toggle('sel', c.dataset.d === d));
@@ -244,9 +250,14 @@ async function loadSlots() {
   SLOT_CACHE = d.slots || [];
   SLOT_PREVIEW = '';
   if (isNaver()) $('openHint').textContent = d.msg || '네이버 화면에서 실제 회차를 확인합니다.';
-  // 아직 예약 창 밖: 창 안의 가장 가까운 날짜 시간표를 기준으로 고르고, 발사 때 서버 응답으로 실제 슬롯을 재확인한다
+  // 아직 예약 창 밖: 창 안의 같은 요일(없으면 가장 가까운 날짜) 시간표를 기준으로 고르고, 발사 때 서버 응답으로 실제 슬롯을 재확인한다
+  // (평일/주말 시간표가 다르다 — 토끼굴 실측: 주말·공휴일만 첫 회차 10:05 가 있다. 오늘 날짜는 지난 회차가 빠져 있어 뒤로 미룬다)
   if (!SLOT_CACHE.length && S.date > (S.today || kstNow().slice(0, 10))) {
-    const alt = S.matrix.find((x) => x.total && x.date !== S.date);
+    const dow = (x) => new Date(x + 'T00:00:00Z').getUTCDay();
+    const pool = S.matrix.filter((x) => x.total && x.date !== S.date);
+    const today = S.today || kstNow().slice(0, 10);
+    const alt = pool.find((x) => dow(x.date) === dow(S.date) && x.date !== today) || pool.find((x) => dow(x.date) === dow(S.date))
+      || pool.find((x) => x.date !== today) || pool[0];
     if (alt) {
       const d2 = await (await fetch(q(alt.date))).json();
       if (S.site !== site || S.date !== date || cur() !== t) return;
@@ -335,13 +346,13 @@ async function fire(dry, wo) {
     dep: ($('dep').value || '').trim(),
   };
   if (isRhe()) {
-    // 토끼굴은 오픈 시각 공지가 없어 달력 창(D-7) 기준 자정으로 본다 → 조회가 시작되는 순간을 넓게 잡는다
+    // 토끼굴은 오픈 시각 공지가 없어 예약 창(오늘+6)이 밀리는 자정으로 본다 → 조회가 시작되는 순간을 넓게 잡는다
     body.deadline = Math.max(DEF.deadline, 600);
     const p = $('rhePerson') ? $('rhePerson').value : '';
     if (p) body.person = p;   // 신청서의 '예약 인원' — 미선택이면 러너가 화면의 테마 최소 인원으로 채운다
   }
   if (isNaver()) { delete body.name; delete body.hp; delete body.dep; }
-  if (isNaver() && !dry && !wo && $('naverConfirm')?.checked) {
+  if (bankOn() && !dry && !wo) {
     if (!$('autosub').checked) return alert('신청서까지 자동 진행을 먼저 켜 주세요.');
     body.bankConfirm = true; body.bankMax = Number($('naverBankMax').value);
     if (!Number.isSafeInteger(body.bankMax) || body.bankMax <= 0) return alert('무통장입금 예약금 상한을 입력해 주세요.');

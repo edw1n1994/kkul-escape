@@ -7,8 +7,8 @@
  *       지점  <select name="branch"> → 1 = 홍대점 (지점 1개)
  *       테마  <select name="theme">  → '' = 전체, 5 = 행운만물상, 4 = 두껍아 두껍아 헌집줄게 새집다오
  *       날짜  <input name="date" value="2026-10-01">  ← 서버 기준일이 이 값으로 온다
- *             datepicker 는 minDate=today, maxDate=today+7 (js/reservation.js 실측) → D-7 롤링 창
- *             창 밖 날짜로 조회하면 서버가 **302 로 홈(/) 으로 돌려보낸다** (실측 10/1 조회 시 10/8 → 302)
+ *             datepicker 는 minDate=today, maxDate=today+7 (js/reservation.js) 이지만 **서버는 오늘+6 까지만** 준다
+ *             창 밖 날짜로 조회하면 서버가 **302 로 홈(/) 으로 돌려보낸다** (실측 10/1 조회 시 10/8 → 302, 10/2 09:37 조회 시 10/9 → 302)
  *       테마별 정보  <section class="res-item"><h2>테마명</h2><table><th>장르</th><td>…</td> …
  *                    인원 "2~4" / 시간 "70min" / 난이도 <div class="res-item-step size4">
  *       슬롯  <ul class="res-times"><li><div class="res-times-btn"><button class="active1 eveReservationButton">
@@ -24,7 +24,7 @@
  *             요금표 <div id="hiddenData">{"2":48000,"3":72000,"4":96000}</div>
  *   · 제출      #eveReservationBtn → 사이트 검증(alert) → AJAX POST /reservation/payment → /reservation/done
  *             즉 **이 버튼이 곧 예약 생성 + 가상계좌 발급(입금 의무)** 이다.
- *   · 오픈 규칙 공지가 없다. 달력이 오늘부터 +7일까지만 허용하는 롤링 창이고 서버는 창 밖 날짜를 홈으로 보낸다.
+ *   · 오픈 규칙 공지가 없다. 서버가 오늘~오늘+6(오늘 포함 7일) 롤링 창만 주고 창 밖 날짜는 홈으로 보낸다.
  *   · devtools-detector 류 디버거 차단은 없다 (vendor/common/reservation*.js 에 없음 → 해제를 걸지 않는다)
  *
  * 정책: 신청서(이름/연락처/인원/결제수단/약관) 까지는 자동으로 채운다.
@@ -40,7 +40,7 @@ export const RHE = {
   label: '방탈출 토끼굴(홍대)',
   branch: 1,
   branches: [[1, '홍대점']],
-  leadDays: 7,        // js/reservation.js datepicker maxDate = 오늘 + 7 (실측)
+  leadDays: 6,        // 서버 실측 창 끝 = 오늘 + 6 (사이트 달력은 +7 까지 그리지만 그날은 서버가 홈으로 되돌린다)
   openTime: '00:00',  // 사이트에 오픈 시각 공지가 없다 → 달력 창이 밀리는 시각을 자정으로 본다(관측값이 우선)
   payMethod: '가상계좌',
 };
@@ -67,40 +67,53 @@ export const isRhePage = (html) => {
 
 /* ---------------- 세션 쿠키가 있는 GET ----------------
  * 실측: 쿠키 없이 /reservation?date=… 를 처음 때리면 홈으로 리다이렉트된다.
- * 쿠키(XSRF-TOKEN / session) 를 먼저 받아 두고 같은 세션으로 물으면 결과를 준다. */
-let JAR = '';
+ * 쿠키(XSRF-TOKEN / session) 를 먼저 받아 두고 같은 세션으로 물으면 결과를 준다.
+ * Laravel 은 응답마다 두 쿠키 값을 새로 내려준다 → 같은 이름은 **덮어쓴다**.
+ * (덧붙이면 요청마다 ~700B 씩 커져 12번째쯤 Cookie 헤더가 8KB 를 넘고 사이트가 400 을 준다 — 실측 2026-10-02) */
+const JAR = new Map();
+const jarHeader = () => [...JAR].map(([k, v]) => `${k}=${v}`).join('; ');
 const keepCookies = (res) => {
   const list = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
   for (const c of list) {
     const kv = String(c).split(';')[0];
-    if (kv && !JAR.split('; ').includes(kv.split('=')[0] + '=')) JAR = JAR ? `${JAR}; ${kv}` : kv;
+    const i = kv.indexOf('=');
+    if (i > 0) JAR.set(kv.slice(0, i).trim(), kv.slice(i + 1));
   }
 };
 
+let SESSION_OK_AT = 0;   // 이 세션으로 예약 화면을 마지막으로 받은 시각
 async function rheFetch(url, referer) {
   const res = await fetch(url, {
     headers: {
       'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ko-KR,ko;q=0.9', ...(JAR ? { cookie: JAR } : {}), ...(referer ? { Referer: referer } : {}),
+      'Accept-Language': 'ko-KR,ko;q=0.9', ...(JAR.size ? { cookie: jarHeader() } : {}), ...(referer ? { Referer: referer } : {}),
     },
     redirect: 'manual', signal: AbortSignal.timeout(15000),
   });
   keepCookies(res);
   if (res.status >= 300 && res.status < 400) return { status: res.status, redirected: true, html: '', loc: res.headers.get('location') || '' };
-  return { status: res.status, redirected: false, html: await res.text() };
+  const html = await res.text();
+  if (res.status === 200 && isRhePage(html)) SESSION_OK_AT = Date.now();
+  return { status: res.status, redirected: false, html };
 }
 
 /**
  * 예약 화면 HTML. 첫 요청이 세션 없이 튕기면(실측) 쿠키를 받고 한 번 더 물는다.
  * 창 밖 날짜는 끝까지 홈으로 돌아가므로 빈 문자열을 돌려준다 → 호출자가 '아직 오픈 전' 으로 안다.
+ * 4xx/5xx 는 창 밖이 아니라 요청 실패다 → 세션을 비우고 다시 받되, 그래도 실패하면 throw 해서 '창 밖' 으로 오인하지 않게 한다.
  */
 export async function rheHtml(opt = {}) {
   const url = rheUrl(opt);
   const first = await rheFetch(url);
   if (!first.redirected && first.status === 200 && isRhePage(first.html)) return first.html;
+  // 방금까지 살아 있던 세션인데 튕겼다 = 창 밖. 오픈 직전 폴링에서 요청 2회를 아껴 오픈 감지를 빠르게 한다
+  if (first.redirected && JAR.size && Date.now() - SESSION_OK_AT < 600000) return '';
+  if (first.status >= 400) JAR.clear();
   const warm = await rheFetch(`${RHE.base}${RHE.page}`, `${RHE.base}/`);
+  if (warm.status >= 400) throw new Error(`토끼굴 예약 화면 응답 HTTP ${warm.status}`);
   if (!isRhePage(warm.html)) return isRhePage(first.html) ? first.html : '';
   const again = await rheFetch(url, `${RHE.base}${RHE.page}`);
+  if (again.status >= 400) throw new Error(`토끼굴 예약 화면 응답 HTTP ${again.status}`);
   return again.redirected || again.status !== 200 ? '' : again.html;
 }
 
@@ -175,7 +188,7 @@ export async function rheTimes({ branch = RHE.branch, theme = '', date = rheToda
   if (!isRhePage(html)) {
     return {
       ok: true, date, slots: [], open: 0, total: 0, notOpen: true,
-      msg: '예약 창 밖 — 서버가 예약 화면으로 되돌립니다 (이 사이트는 오늘부터 +7일까지만 조회되는 롤링 창)',
+      msg: `예약 창 밖 — 서버가 예약 화면으로 되돌립니다 (이 사이트는 오늘부터 +${RHE.leadDays}일까지만 조회되는 롤링 창)`,
     };
   }
   const p = parseRhePage(html);
@@ -228,8 +241,8 @@ export async function rheOpenInfo({ branch = RHE.branch, date = '' } = {}) {
   const base = {
     site: 'rhe', branch: (RHE.branches.find((b) => String(b[0]) === String(branch)) || [branch, '홍대점'])[1],
     openTime: RHE.openTime,
-    openTimeSource: '사이트에 오픈 시각 공지 없음 — 달력 창(D-7)이 밀리는 시각을 00:00 으로 가정',
-    leadDays: RHE.leadDays, leadSource: `js/reservation.js datepicker maxDate = 오늘+${RHE.leadDays} (실측)`,
+    openTimeSource: `사이트에 오픈 시각 공지 없음 — 예약 창(오늘+${RHE.leadDays})이 밀리는 시각을 00:00 으로 가정`,
+    leadDays: RHE.leadDays, leadSource: `서버 실측 창 끝 = 오늘+${RHE.leadDays} (사이트 달력의 +7 은 서버가 거부)`,
     today, date: date || null, windowEnd: observed,
   };
   if (!date) return { ok: false, ...base, note: '날짜 미선택' };

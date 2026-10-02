@@ -31,6 +31,8 @@ const PORT = Number(process.env.PORT ?? 8899);
 let CDP_PORT = Number(process.env.CDP_PORT || 9222);
 const MAXRUN_LOG = 800;
 const DESKTOP = process.env.DESKTOP_APP === '1';
+// 네이버 무통장입금 예약 확정은 실화면 검증 전 초안이다 → 기본으로 꺼 두고 개발할 때만 KKUL_NAVER_BANK=1 로 켠다
+const NAVER_BANK = process.env.KKUL_NAVER_BANK === '1';
 const browserPort = requested => DESKTOP ? CDP_PORT : Number(requested) || CDP_PORT;
 let browserConnection, browserSequence = 0;
 function ensureBrowser() {
@@ -92,6 +94,7 @@ function pushLine(line) {
 function startPreparedRun(body) {
   if (run.child) return { ok: false, msg: '이미 실행 중입니다. 먼저 [중단] 하세요.' };
   const site = siteOf(body.site).key;
+  if (site === 'naver' && body.bankConfirm === true && !NAVER_BANK) return { ok: false, msg: '무통장입금 예약 확정은 아직 검증 전이라 이 버전에서는 사용할 수 없습니다' };
   if (site === 'naver') {
     try { validateNaverRun({ ...body, dry: body.dry }); } catch (e) { return { ok: false, msg: e.message }; }
   }
@@ -107,8 +110,10 @@ function startPreparedRun(body) {
     '--date', String(body.date), '--tname', String(body.tname || ''),
     '--port', String(browserPort(body.cdp)),
     '--deadline', String(Number(body.deadline || 60)),
-    '--agrees', String(body.agrees || siteOf(site).agrees.join(',')),
   ];
+  // 빈 값을 넘기면 러너의 인자 파서가 true 로 읽어 '약관 1개' 로 보인다 → 약관이 있는 사이트(키이스케이프)만 넘긴다
+  const agrees = String(body.agrees || siteOf(site).agrees.join(','));
+  if (agrees) args.push('--agrees', agrees);
   // 예약자 이름/연락처는 하드코딩하지 않는다: 요청 본문 → 환경변수 → ui/local.env 순으로 해석한다
   const pname = site === 'naver' ? '' : personal('KEYESCAPE_NAME', body.name);
   const php = site === 'naver' ? '' : personal('KEYESCAPE_HP', body.hp);
@@ -202,7 +207,7 @@ const server = http.createServer(async (req, res) => {
       const cal = site.key === 'keyescape' ? await getCalendar(Number(a.info) || 34).catch(() => null) : null;
       return json(res, 200, {
         desktop: DESKTOP, site: site.key, siteLabel: site.label, captcha: site.captcha, siteNote: site.note,
-        deposit: !!site.deposit, loginRequired: site.login === 'required',
+        deposit: !!site.deposit, loginRequired: site.login === 'required', naverBank: NAVER_BANK,
         sites: Object.values(SITES).map((s) => ({
           key: s.key, label: s.label, captcha: s.captcha,
           deposit: !!s.deposit, login: s.login === 'required' ? 'required' : 'none',
@@ -275,7 +280,7 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { ok: true, site, serverToday: today, days: out });
       }
-      if (site === 'rhe') {   // 오늘부터 D-7 롤링 창 — 창 밖 날짜는 서버가 홈으로 되돌린다 → 그 뒤는 물지 않는다
+      if (site === 'rhe') {   // 오늘~오늘+6 롤링 창 — 창 밖 날짜는 서버가 홈으로 되돌린다 → 그 뒤는 물지 않는다
         let outOfWindow = false;
         for (let i = 0; i < days; i++) {
           const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);

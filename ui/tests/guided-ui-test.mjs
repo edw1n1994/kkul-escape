@@ -6,14 +6,14 @@ import { once } from 'node:events';
 import { cdp, sleep } from '../lib.mjs';
 const files = new URL('../public/', import.meta.url);
 const sites = [{key:'keyescape',label:'키이스케이프'},{key:'zeroworld',label:'제로월드'},{key:'dps',label:'단편선'},{key:'naver',label:'네이버 예약'},{key:'rhe',label:'방탈출 토끼굴'}];
-const fixture = { unlock:{cdp:'OK',count:0,allUnlocked:true}, unlockPosts:0, unlockReads:0, unlockFail:false, running:false, connected:true, logged:true, fail:false, calls:[], selection:null, streams:new Set() };
+const fixture = { naverBank:true, unlock:{cdp:'OK',count:0,allUnlocked:true}, unlockPosts:0, unlockReads:0, unlockFail:false, running:false, connected:true, logged:true, fail:false, calls:[], selection:null, streams:new Set() };
 const server = http.createServer(async (req,res) => {
  const url=new URL(req.url,'http://local'), site=url.searchParams.get('site')||'naver';
  const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
  if(['index.html','classic.html','app.js','guided.js','guided.css'].includes(name)) {res.setHeader('content-type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');return res.end(fs.readFileSync(new URL(name,files)));}
  const json=data=>{res.setHeader('content-type','application/json');res.end(JSON.stringify(data));};
  if(url.pathname==='/api/events'){res.writeHead(200,{'content-type':'text/event-stream'});res.write(':ready\n\n');fixture.streams.add(res);req.on('close',()=>fixture.streams.delete(res));return;}
- if(url.pathname==='/api/env')return json({site,sites,cdp:fixture.connected?'OK':'DOWN',desktop:true,cdp_port:1,serverToday:'2099-09-10',deposit:site==='dps',branches:[{num:'1',name:'테스트 지점'}],running:fixture.running,selection:fixture.selection,exit:null});
+ if(url.pathname==='/api/env')return json({site,sites,cdp:fixture.connected?'OK':'DOWN',desktop:true,cdp_port:1,serverToday:'2099-09-10',deposit:site==='dps',naverBank:fixture.naverBank,branches:[{num:'1',name:'테스트 지점'}],running:fixture.running,selection:fixture.selection,exit:null});
  if(url.pathname==='/api/themes')return json({ok:true,themes:[{theme:'2',info:'3',name:'테스트 테마'}]});
  if(url.pathname==='/api/matrix')return json({ok:true,days:[{date:'2099-09-17',dow:'목',total:0,past:false}]});
  if(url.pathname==='/api/slots')return json({ok:true,slots:[{num:4,time:'19:20',open:true}]});
@@ -82,6 +82,9 @@ try{
    fixture.fail=true;await click('#wizardNext');await wait("$('wizardError').textContent.includes('테스트 연결 실패')");assert.equal(await ev("$('wizardNext').disabled"),false);fixture.fail=false;
   }
   if(key==='naver'){
+   fixture.naverBank=false;await ev('loadEnv()');   // 배포 기본값: 검증 전 무통장입금 확정 옵션은 보이지 않는다
+   assert.equal(await ev("$('naverBankOptions').hidden"),true);assert.match(await ev("$('autoHelp').textContent"),/직접 해 주세요/);
+   fixture.naverBank=true;await ev('loadEnv()');
    await click('#naverConfirm');assert.equal(await ev("$('naverBankLimit').hidden"),false);
    await click('#wizardNext');assert.match(await ev("$('wizardError').textContent"),/상한/);
    await ev("$('naverBankMax').value='70000'");

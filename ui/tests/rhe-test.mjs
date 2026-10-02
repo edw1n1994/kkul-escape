@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import { RHE, rheUrl, isRhePage, rheOptions, parseRhePage, rhePick, rheFiller, rheCreateRead, rheNoteWindow, rheOpenInfo, rheToday } from '../rhe.mjs';
+import { RHE, rheUrl, isRhePage, rheOptions, parseRhePage, rhePick, rheFiller, rheCreateRead, rheNoteWindow, rheOpenInfo, rheToday, rheHtml, rheTimes } from '../rhe.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const RES = await readFile(path.join(dir, 'fixture-rhe-reservation.html'), 'utf8');
@@ -55,6 +55,49 @@ test('신청서 픽스처: 예약좌표 hidden · 입력란 · 최종 버튼의 
   assert.match(CREATE, /id="hiddenData"/);                         // 요금표
 });
 
+
+/* ---------------- 세션 쿠키 (가짜 fetch — 네트워크 없음) ---------------- */
+test('세션 쿠키: 같은 이름은 덮어써 헤더가 커지지 않고, 4xx 는 창 밖으로 오인하지 않는다', async () => {
+  const real = globalThis.fetch;
+  const sent = [];
+  let status = 200;
+  globalThis.fetch = async (url, opt) => {
+    const n = sent.push(opt.headers.cookie || '');
+    const cookies = [`XSRF-TOKEN=x${n}; path=/`, `rabbit_session=s${n}; path=/; httponly`];
+    return { status, headers: { getSetCookie: () => cookies, get: () => '' }, text: async () => RES };
+  };
+  try {
+    for (let i = 0; i < 20; i++) assert.equal(isRhePage(await rheHtml({ date: '2030-01-07' })), true);
+    assert.equal(sent.at(-1), 'XSRF-TOKEN=x19; rabbit_session=s19');   // 예전엔 40쌍이 덧붙어 8KB 를 넘었다
+    status = 400;
+    const r = await rheTimes({ date: '2030-01-07' });
+    assert.equal(r.ok, false);
+    assert.notEqual(r.notOpen, true);
+    assert.match(r.msg, /HTTP 400/);
+  } finally { globalThis.fetch = real; }
+});
+
+test('오픈 대기 폴링: 살아 있는 세션으로 튕기면 창 밖으로 보고 요청 1회로 끝낸다', async () => {
+  const real = globalThis.fetch;
+  let calls = 0, mode = 'page';
+  globalThis.fetch = async () => {
+    calls++;
+    const headers = { getSetCookie: () => ['XSRF-TOKEN=t; path=/', 'rabbit_session=s; path=/'], get: () => (mode === 'page' ? '' : RHE.base) };
+    return mode === 'page'
+      ? { status: 200, headers, text: async () => RES }
+      : { status: 302, headers, text: async () => '' };
+  };
+  try {
+    assert.equal((await rheTimes({ date: '2030-01-07' })).total > 0, true);   // 세션 확보
+    mode = 'redirect'; calls = 0;
+    const r = await rheTimes({ date: '2030-01-14' });
+    assert.equal(r.notOpen, true);
+    assert.equal(calls, 1);                                                   // 예전엔 warm + 재시도로 3회
+    mode = 'page'; calls = 0;
+    assert.equal((await rheTimes({ date: '2030-01-07' })).notOpen, false);    // 창이 열리면 바로 첫 요청에 잡힌다
+    assert.equal(calls, 1);
+  } finally { globalThis.fetch = real; }
+});
 
 /* ---------------- rhePick: 시간 버튼 게이트 ---------------- */
 const coord = (o = {}) => ({ branch: 1, theme: 5, date: '2030-01-07', time: '11:20', ...o });
@@ -226,15 +269,15 @@ test('신청서 스냅샷: 입력 결과와 버튼 상태를 읽는다 (버튼�
   assert.equal(f.btn.clicks, 0);
 });
 
-/* ---------------- 오픈 규칙 (공지 없음 → D-7 롤링 창) ---------------- */
-test('오픈 정보: 공지 없는 사이트라 달력 창(D-7) 기준 자정으로 안내한다', async () => {
+/* ---------------- 오픈 규칙 (공지 없음 → 오늘~오늘+6 롤링 창) ---------------- */
+test('오픈 정보: 공지 없는 사이트라 예약 창(오늘+6) 기준 자정으로 안내한다', async () => {
   const today = rheToday();
   const info = await rheOpenInfo({ date: plusDays(today, 20) });
   assert.equal(info.ok, true);
   assert.equal(info.openTime, '00:00');
-  assert.equal(info.leadDays, 7);
+  assert.equal(info.leadDays, 6);                       // 서버 실측 창 끝 (사이트 달력의 +7 은 서버가 302 로 거부)
   assert.equal(info.inWindow, false);
-  assert.equal(info.openDate, plusDays(today, 13));     // 오늘+20 은 오늘+13 에 열리기 시작
+  assert.equal(info.openDate, plusDays(today, 14));     // 오늘+20 은 오늘+14 에 열리기 시작
   assert.match(info.openAt, /T00:00:00\+09:00$/);
   assert.match(info.openTimeSource, /공지 없음/);
   const inside = await rheOpenInfo({ date: plusDays(today, 2) });
