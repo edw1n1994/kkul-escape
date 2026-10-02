@@ -94,6 +94,21 @@
   실페이지 로그인 및 목요일 19:20 라벨 확인. 사전 테스트로 다른 회차 예약·결제를 제출하지 않았다.
 - 중지: 해당 작업 폴더에 `STOP` 파일 생성. 이 파일은 재실행을 위한 명시적 정리 전까지 유지.
 
+## 로컬 빌드 완료 (1.2.0, 2026-10-02)
+
+- `./scripts/build.sh all` → `npm ci` → `npm test`(문법 64 · 테스트 71/71) → electron-builder `--publish never`.
+  산출물: `dist/Kkul-Escape-1.2.0-{mac-arm64,mac-x64,win-x64}.zip` + `dist/SHA256SUMS-1.2.0.txt`(재검증 OK).
+- 이 릴리즈의 핵심 변경은 새 사이트 어댑터 `ui/rhe.mjs`(`site=rhe` 방탈출 토끼굴 홍대) 와 그 배선 파일들.
+  **`desktop/runtime.cjs` 허용 목록에 어댑터를 추가하지 않으면 배포본에서 `sites.mjs` import 가 실패해 앱 서버가 뜬다**
+  (실제로 desktop 재접속 테스트가 15초 타임아웃으로 잡았다). 허용 목록과 `package.json extraResources` 는 항상 함께 확인할 것.
+- 검증: 두 macOS 앱 `codesign --verify` 통과(ad-hoc · `spctl` 은 미공증이라 reject 정상) · 세 ZIP CRC 통과 ·
+  아카이브 안에 runtime 24종(= 허용 목록, `runtime/ui/rhe.mjs` 포함) 확인 · `MacOS/` 실행파일 0755 유지.
+  arm64 · x64(Rosetta 2) 모두 `--desktop-smoke` 통과(`DESKTOP_SMOKE_OK`). Windows 는 패키지 검증만 수행(실기기 미확인).
+- 릴리즈 기록: `.local/builds/1.2.0/{source(=HEAD git archive),build-manifest.json,validation.json}`.
+  이전 1.1.3 스냅샷은 node_modules·dist 까지 복사한 1.3GB 사본이었지만, 이번부터는 재현 가능한 git archive(약 2MB) 로 보존.
+- `dist/` 정리: 1.1.3 ZIP 3종 + `SHA256SUMS-1.1.3.txt` 는 `.local/backups/release-1.1.3/` 으로 이동, 자동갱신 메타(blockmap·latest-mac.yml) 는 삭제.
+- **GitHub 릴리즈 자산 교체와 git push 는 수행하지 않았다** (별도 지시 필요).
+
 ## 바이너리 배포 완료 (1.1.3, 2026-09-11)
 
 - 키이스케이프 reCAPTCHA 체크박스 자동 1회 클릭을 macOS arm64/x64 및 Windows x64 ZIP에 반영.
