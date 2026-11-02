@@ -121,3 +121,40 @@ test('desktop reconnect changes the runner port, ignores stale UI ports and bloc
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('smoke server rejects reservation and browser mutation routes before any side effects', { timeout: 10000 }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kkul-safe-smoke-'));
+  copyRuntime(root, dir);
+  const child = fork(path.join(dir, 'ui/server.mjs'), [], {
+    env: { ...process.env, DESKTOP_APP: '1', DESKTOP_SMOKE: '1', PORT: '0', BIND: '127.0.0.1', CDP_PORT: '1' }, silent: true,
+  });
+  const exit = once(child, 'exit');
+  let browserRequests = 0;
+  child.on('message', msg => {
+    if (msg.type === 'browser:ensure') {
+      browserRequests++;
+      child.send({ type: 'browser:ready', id: msg.id, port: 1 });
+    }
+  });
+  try {
+    const [ready] = await once(child, 'message');
+    const base = `http://127.0.0.1:${ready.port}`;
+    for (const route of ['/api/run', '/api/browser/open', '/api/naver/open', '/api/unlock', '/api/stop']) {
+      const response = await fetch(base + route, { method: 'POST', body: JSON.stringify({ finalSubmit: true }) });
+      assert.equal(response.status, 403, route);
+    }
+    assert.equal(browserRequests, 0);
+    const reconnect = await fetch(base + '/api/browser/reconnect', { method: 'POST' }).then(r => r.json());
+    assert.equal(reconnect.ok, true);
+    assert.equal(reconnect.port, 1);
+    assert.equal(browserRequests, 1);
+    const logs = await fetch(base + '/api/log').then(r => r.json());
+    assert.equal(logs.running, false);
+    assert.equal(logs.preparing, false);
+  } finally {
+    if (child.connected) child.send({ type: 'shutdown' });
+    else child.kill();
+    await exit;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
