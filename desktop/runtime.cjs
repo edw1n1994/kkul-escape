@@ -17,7 +17,7 @@ function copyRuntime(source, destination) {
 function browserCandidates(platform, env = process.env) {
   if (platform === 'darwin') return [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    path.join(env.HOME || '', 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+    path.posix.join(env.HOME || '', 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'];
   return [env.PROGRAMFILES, env['PROGRAMFILES(X86)'], env.LOCALAPPDATA]
     .filter(Boolean).flatMap(base => [path.join(base, 'Google/Chrome/Application/chrome.exe'),
