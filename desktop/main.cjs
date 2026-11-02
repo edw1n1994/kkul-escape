@@ -5,7 +5,7 @@ const { spawn } = require('node:child_process');
 const { copyRuntime, browserCandidates } = require('./runtime.cjs');
 
 const smoke = process.argv.includes('--desktop-smoke');
-if (smoke) app.setPath('userData', path.join(app.getPath('temp'), `kkul-smoke-${process.pid}`));
+if (smoke) app.setPath('userData', fs.mkdtempSync(path.join(process.env.KKUL_SMOKE_TEMP || app.getPath('temp'), 'kkul-smoke-')));
 let win, backend, quitting = false, origin;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -55,7 +55,7 @@ async function start() {
   const log = fs.openSync(path.join(app.getPath('userData'), 'desktop.log'), 'a');
   backend = spawn(process.execPath, [path.join(runtime, 'ui/server.mjs')], {
     cwd: path.join(runtime, 'ui'),
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: smoke ? '0' : '18899', BIND: '127.0.0.1', CDP_PORT: String(cdpPort), DESKTOP_APP: '1' },
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: smoke ? '0' : '18899', BIND: '127.0.0.1', CDP_PORT: String(cdpPort), DESKTOP_APP: '1', DESKTOP_SMOKE: smoke ? '1' : '0', ...(smoke ? { KKUL_NAVER_BANK: '0' } : {}) },
     stdio: ['ignore', log, log, 'ipc'], windowsHide: true,
   });
   fs.closeSync(log);
@@ -74,7 +74,7 @@ async function start() {
     backend.once('message', msg => { clearTimeout(timer); resolve(msg.port); });
   });
   origin = `http://127.0.0.1:${port}`;
-  backend.on('exit', () => { if (!quitting) { dialog.showErrorBox('서버 종료', '앱 서버가 종료되었습니다. 앱을 다시 실행해 주세요.'); app.quit(); } });
+  backend.on('exit', () => { if (smoke && !quitting) { smokeFailure(new Error('Backend exited unexpectedly')); return; } if (!quitting) { dialog.showErrorBox('서버 종료', '앱 서버가 종료되었습니다. 앱을 다시 실행해 주세요.'); app.quit(); } });
   win = new BrowserWindow({ width: 1280, height: 900, minWidth: 900, minHeight: 650,
     title: '예약도우미', show: false,
     icon: path.join(__dirname, 'assets', 'honey-pot-transparent.png'),
@@ -92,16 +92,34 @@ async function start() {
       if (choice === 0) event.preventDefault();
     }
   });
+  const rendererErrors = [];
+  if (smoke) {
+    win.webContents.on('render-process-gone', (_event, details) => smokeFailure(new Error('Renderer exited: ' + details.reason)));
+    win.webContents.on('did-fail-load', (_event, code, description) => rendererErrors.push(`Load failed: ${code} ${description}`));
+    win.webContents.on('console-message', ({ level, message }) => {
+      if (level === 'error') rendererErrors.push(message);
+    });
+  }
   await win.loadURL(origin);
   if (smoke) {
     const result = await win.webContents.executeJavaScript(`(async () => { await setSite('naver'); const recovery = await fetch('/api/browser/reconnect', { method: 'POST' }).then(r => r.json()); return { browserRecovered: recovery.ok && recovery.port === 1, title: document.title, inputs: document.querySelectorAll('input').length, nodeExposed: typeof require !== 'undefined', naverTheme: document.getElementById('theme').value }; })()`);
+    if (rendererErrors.length) throw new Error('Renderer errors: ' + JSON.stringify(rendererErrors));
     if (!result.browserRecovered || !result.title || !result.inputs || result.nodeExposed || result.naverTheme !== '6627331') throw new Error('화면 검증 실패: ' + JSON.stringify(result));
     console.log('DESKTOP_SMOKE_OK ' + JSON.stringify(result));
     app.quit();
   } else { win.show(); }
 }
 
-if (!app.requestSingleInstanceLock()) app.quit();
+function smokeFailure(err) {
+  console.error('DESKTOP_SMOKE_ERROR ' + (err.stack || err));
+  process.exitCode = 1;
+  app.quit();
+}
+
+if (!app.requestSingleInstanceLock()) {
+  if (smoke) smokeFailure(new Error('Single instance lock unavailable'));
+  else app.quit();
+}
 else {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
   app.whenReady().then(async () => {
@@ -112,7 +130,7 @@ else {
       { label: '도움말', submenu: [{ label: '앱 데이터 폴더 열기', click: () => shell.openPath(app.getPath('userData')) }] },
     ]));
     await start();
-  }).catch(err => { if (smoke) console.error(err); else dialog.showErrorBox('실행할 수 없습니다', err.message); process.exitCode = 1; app.quit(); });
+  }).catch(err => { if (smoke) { smokeFailure(err); return; } else dialog.showErrorBox('실행할 수 없습니다', err.message); process.exitCode = 1; app.quit(); });
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', event => {
     if (backend && backend.exitCode === null && !quitting) {
