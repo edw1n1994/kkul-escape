@@ -1,0 +1,51 @@
+name: Windows packaged desktop smoke
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build Windows x64 release ZIP
+        run: npm run build:win -- --publish never
+      - name: Extract ZIP and run the shipped executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $zip = "dist/Kkul-Escape-$version-win-x64.zip"
+          if (!(Test-Path -LiteralPath $zip)) { throw "Missing release ZIP: $zip" }
+          $destination = Join-Path $env:RUNNER_TEMP 'kkul packaged 한글 path'
+          Expand-Archive -LiteralPath $zip -DestinationPath $destination -Force
+          $product = (Get-Content package.json -Raw | ConvertFrom-Json).build.productName
+          $exe = Join-Path $destination "$product.exe"
+          if (!(Test-Path -LiteralPath $exe)) { throw "Missing packaged EXE: $exe" }
+          npm run test:desktop:win -- "$exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-smoke-${{ github.run_attempt }}
+          path: .local/desktop-smoke/
+          if-no-files-found: warn
+          retention-days: 14
+          include-hidden-files: true

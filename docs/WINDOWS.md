@@ -109,3 +109,33 @@ CDP 를 아예 안 쓰는 영구 방식(가장 견고):
   브라우저 창도 최소화하지 두지 않는 편이 안전하다(일부 GPU 절감 정책에서 백그라운드 탭 타이머가 느려진다).
 - `OPEN_AT` 은 그대로 `2026-09-05T10:30:00+09:00` 형태(KST 오프셋 명시) 를 쓰면 로컬 타임존 설정과 무관하다.
 - 시간 동기화가 안 된 PC면 서버와 수백 ms 차이가 날 수 있으니 `w32tm /resync` 로 맞춰두면 좋다.
+
+## 7. 배포 ZIP 실행 스모크 (예약·결제 없음)
+
+Windows에서 Node.js 22 이상을 설치한 뒤, 빌드한 ZIP을 **새 폴더**에 풀고 실행한다.
+개발용 `electron .` 또는 `dist/win-unpacked` 대신 ZIP 안의 실행 파일을 검증한다.
+
+```powershell
+npm ci
+npm run build:win -- --publish never
+$version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+Expand-Archive "dist/Kkul-Escape-$version-win-x64.zip" "$env:TEMP/kkul smoke" -Force
+npm run test:desktop:win -- "$env:TEMP/kkul smoke/예약도우미.exe"
+```
+
+- `--desktop-smoke`로 EXE를 직접 실행하고 최대 90초 기다린다. 정상 종료(코드 0)와
+  정확히 한 번 출력된 `DESKTOP_SMOKE_OK` JSON을 모두 요구한다.
+- JSON의 화면 제목, 입력 요소, 네이버 기본 테마, Node 비노출, 브라우저 재연결 IPC를 검사한다.
+  재연결은 더미 포트 1을 사용하며 실제 Chrome/Edge 연결 복구를 검증하는 것은 아니다.
+- 렌더러 오류/크래시, 페이지 로딩 실패, 오류 마커, 성공 결과 누락, 비정상 종료,
+  시간 초과는 실패한다. 시간 초과 시 해당 EXE의 프로세스 트리만 종료한다.
+- 매번 임시 userData를 사용하고 테스트 후 삭제한다. 사용자 예약 정보나 로그인 프로필을
+  읽지 않는다. 스모크 서버는 예약 실행·브라우저 열기·변경 요청을 차단하고,
+  무통장입금 옵션을 끈다. 읽기 전용 상품/사이트 데이터 요청은 발생할 수 있다.
+- `.local/desktop-smoke/`에 stdout/stderr, 백엔드 로그와 `result.json`을 남긴다.
+  다른 로그 폴더는 EXE 경로 다음 인자로 지정한다. `ELECTRON_RUN_AS_NODE`,
+  `NODE_OPTIONS`, `NODE_PATH`는 자식 실행 환경에서 제거한다.
+- `.github/workflows/windows-desktop-smoke.yml`은 PR, main push, v 태그 push,
+  수동 실행에서 Windows x64 ZIP을 빌드·압축 해제·실행하고 진단 로그를 14일 보관한다.
+  배포 업로드나 예약 제출은 수행하지 않는다. CI 성공은 해당 커밋에서 새로 빌드한 ZIP에
+  대한 결과이며, 기존 v1.3.0 릴리스 자산의 실행 검증 결과를 소급해서 의미하지 않는다.

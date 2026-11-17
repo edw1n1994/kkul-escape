@@ -186,6 +186,11 @@ const server = http.createServer(async (req, res) => {
   const p = new URL(req.url, 'http://x').pathname;
   const a = qs(req.url);
   try {
+    // Smoke may read UI data and exercise IPC recovery, but must never drive a booking browser.
+    if (process.env.DESKTOP_SMOKE === '1' && (
+      (!['GET', 'HEAD'].includes(req.method) && p !== '/api/browser/reconnect') ||
+      ['/api/run', '/api/browser/open', '/api/naver/open'].includes(p)
+    )) return json(res, 403, { ok: false, msg: 'Disabled during desktop smoke' });
     const assets = { '/': 'index.html', '/index.html': 'index.html', '/classic.html': 'classic.html', '/app.js': 'app.js', '/guided.js': 'guided.js', '/guided.css': 'guided.css' };
     if (Object.hasOwn(assets, p)) {
       const file = assets[p];

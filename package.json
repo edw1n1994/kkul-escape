@@ -13,7 +13,8 @@
     "start:ui": "node ui/server.mjs",
     "check": "node scripts/check.mjs",
     "test": "npm run check && node --test desktop/tests/*.test.cjs ui/tests/zw-submit-test.mjs ui/tests/naver-test.mjs ui/tests/naver-bank-test.mjs ui/tests/recaptcha-click-test.mjs ui/tests/rhe-test.mjs ui/tests/sites-form-test.mjs",
-    "test:browser": "node ui/tests/submit-test.mjs && node ui/tests/dps-test.mjs && node ui/tests/naver-ui-test.mjs && node ui/tests/guided-ui-test.mjs && node ui/tests/recaptcha-browser-test.mjs"
+    "test:browser": "node ui/tests/submit-test.mjs && node ui/tests/dps-test.mjs && node ui/tests/naver-ui-test.mjs && node ui/tests/guided-ui-test.mjs && node ui/tests/recaptcha-browser-test.mjs",
+    "test:desktop:win": "node scripts/windows-smoke.cjs"
   },
   "devDependencies": {
     "electron": "44.3.0",
