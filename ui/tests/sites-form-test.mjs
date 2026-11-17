@@ -6,7 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { parseRhePage, JGB, JGB_SITE, rheToday } from '../rhe.mjs';
+import { parseRhePage, parseRheRange, isRhePage, rhePick, JGB, JGB_SITE, P33, P33_SITE, rheToday } from '../rhe.mjs';
+import { SITES, zwSubj, isFormSite } from '../sites.mjs';
+import { BRANCHES, parseOpenTimes, OPEN_TIME_FALLBACK } from '../lib.mjs';
 import { parsePtdCatalog, ptdDay, ptdPick, ptdSubmit } from '../pagetoday.mjs';
 import { parseOasPage, isOasPage, oasTimes, oasPick, oasFiller, oasSubmit } from '../oasis.mjs';
 
@@ -42,19 +44,36 @@ test('지구별: 클래스가 붙은 h2/span · res-item clear-b · 표의 난�
   assert.equal(b.name, '만월 <<꿈을 훔치는 요괴>>');            // 드롭다운 라벨과 같은 문자열이어야 섹션을 찾는다
 });
 
-test('지구별: 지점마다 예약 창이 다르다 (대구 +14, 홍대 +6) · 관측한 창 끝은 지점별로 기억한다', async () => {
+test('지구별: 지점마다 오픈 규칙이 다르다 (대구 2주 전 0시, 홍대 1주 전 22시) · 관측한 창 끝은 지점별로 기억한다', async () => {
   const today = rheToday();
   assert.equal(JGB_SITE.leadFor(1), 14);
   assert.equal(JGB_SITE.leadFor(2), 6);
   assert.equal(JGB_SITE.leadFor('4'), 6);
-  const daegu = await JGB_SITE.openInfo({ branch: 1, date: plusDays(today, 20) });
-  assert.equal(daegu.openDate, plusDays(today, 6));
-  assert.equal(daegu.branch, '대구점');
-  const hongdae = await JGB_SITE.openInfo({ branch: 2, date: plusDays(today, 20) });
-  assert.equal(hongdae.openDate, plusDays(today, 14));
-  JGB_SITE.noteWindow(today, [0, 1, 2, 3, 4].map((n) => ({ date: plusDays(today, n), total: 5 })).concat([{ date: plusDays(today, 5), total: 0 }]), '4');
-  assert.equal((await JGB_SITE.openInfo({ branch: 4, date: plusDays(today, 9) })).leadDays, 4);   // 관측값 우선
-  assert.equal((await JGB_SITE.openInfo({ branch: 2, date: plusDays(today, 9) })).leadDays, 6);   // 다른 지점에는 번지지 않는다
+  const at = (hm) => Date.parse(`${today}T${hm}:00+09:00`);
+  // 공지(2024.08.16): 대구 "2주 전 0시" · 어드벤처·라스트시티 "1주 전 22시"
+  for (const hm of ['09:00', '21:59', '22:00', '23:30']) {
+    const daegu = await JGB_SITE.openInfo({ branch: 1, date: plusDays(today, 20), now: at(hm) });
+    assert.equal(daegu.openDate, plusDays(today, 6), hm);
+    assert.equal(daegu.openAt, `${plusDays(today, 6)}T00:00:00+09:00`);
+    assert.equal(daegu.leadDays, 14);
+    assert.equal(daegu.branch, '대구점');
+    for (const b of [2, 4]) {
+      const hongdae = await JGB_SITE.openInfo({ branch: b, date: plusDays(today, 20), now: at(hm) });
+      assert.equal(hongdae.openTime, '22:00');
+      assert.equal(hongdae.leadDays, 7, `${b} ${hm}`);
+      assert.equal(hongdae.openAt, `${plusDays(today, 13)}T22:00:00+09:00`, `${b} ${hm}`);
+      assert.match(hongdae.openTimeSource, /1주 전 22시/);
+    }
+  }
+  // 오늘+7 (홍대): 오늘 22:00 에 열린다
+  const before = await JGB_SITE.openInfo({ branch: 2, date: plusDays(today, 7), now: at('21:59') });
+  assert.equal(before.openAt, `${today}T22:00:00+09:00`);
+  assert.equal(before.inWindow, false);
+  assert.equal((await JGB_SITE.openInfo({ branch: 2, date: plusDays(today, 7), now: at('22:00') })).inWindow, true);
+  // 관측값 우선 + 22:00 전 관측이면 +1 · 다른 지점에는 번지지 않는다
+  JGB_SITE.noteWindow(today, [0, 1, 2, 3, 4].map((n) => ({ date: plusDays(today, n), total: 5 })).concat([{ date: plusDays(today, 5), total: 0 }]), '4', at('12:00'));
+  assert.equal((await JGB_SITE.openInfo({ branch: 4, date: plusDays(today, 9), now: at('12:30') })).leadDays, 5);   // 관측 +4 (22:00 전) + 1
+  assert.equal((await JGB_SITE.openInfo({ branch: 2, date: plusDays(today, 9), now: at('12:30') })).leadDays, 7);
   assert.equal(JGB.branches.length, 3);
 });
 
@@ -315,3 +334,141 @@ test("오아시스 최종: 좌표·이름·연락처·인원·금액·동의가 
   ];
   for (const [o, re] of cases) { const g = oasSubmitCtx(o); assert.match(g.run(OSUB).problems.join('|'), re); assert.equal(g.btn.clicks, 0); }
 });
+
+
+/* ---------------- 플레이33 (play33.kr) — 실측 2026-11-16 마크업을 줄여 옮김 ---------------- */
+const P33_HTML = `<form class="ressearch cba" action="https://play33.kr/reservation#content">
+<select name="branch" value="1"><option value="1">건대점</option><option value="4">홍대점</option><option value="6">테스트</option></select>
+<select name="theme" value="" onChange="this.form.submit()"><option value="">테마를 선택해주세요.</option><option value="47">목격자</option><option value="46">그날</option></select>
+<input class="mask-date" type="text" name="date" readonly value="2030-01-07" onChange="this.form.submit()"></form>
+<section class="reslist"><div class="container size2"><figure class="reslist-img"><img src="x.jpg" alt="목격자"></figure>
+<div class="reslist-text"><strong>목격자</strong><table>
+<tr><th>장르</th><td>드라마/스릴러</td></tr><tr><th>인원</th><td>2~4인</td></tr><tr><th>시간</th><td>65</td></tr>
+<tr><th>난이도</th><td><div class="resstep size25 cba"> <span></span> <span></span> </div></td></tr></table>
+<div class="restimes"><strong>TIMES</strong><ul>
+<li><button disabled type="button">
+ 예약 불가 <span>10:30</span></button></li>
+<li><button class="eveReservationButton" type="button">
+ 예약 가능 <span>16:45</span>
+ <div class="dn eveHiddenData">{&quot;branch&quot;:1,&quot;theme&quot;:47,&quot;date&quot;:&quot;2030-01-07&quot;,&quot;time&quot;:&quot;16:45&quot;}</div></button></li>
+</ul></div></div></div></section>
+<section class="reslist"><div class="container size2"><div class="reslist-text"><strong>그날</strong><table>
+<tr><th>인원</th><td>2~4인</td></tr><tr><th>난이도</th><td><div class="resstep size3 cba"></div></td></tr></table>
+<div class="restimes"><strong>TIMES</strong><ul>
+<li><button class="eveReservationButton" disabled type="button">예약 가능 <span>14:20</span><div class="dn eveHiddenData">{&quot;branch&quot;:1,&quot;theme&quot;:46,&quot;date&quot;:&quot;2030-01-07&quot;,&quot;time&quot;:&quot;14:20&quot;}</div></button></li>
+</ul></div></div></div></section>
+<form çlass="dn" method="post" action="https://play33.kr/reservation/create#content" id="eveSubmitForm"><input type="hidden" name="branch" /><input type="hidden" name="_token" value="t"></form>
+<input type="hidden" id="reservation_range_day" value="7" />
+<input type="hidden" id="reservation_range_open_time" value="20:00:00" />`;
+
+test('플레이33: reslist 섹션 · strong 테마명 · resstep 난이도 · 클래스 없는 가능 버튼 · 화면의 오픈 규칙을 읽는다', () => {
+  assert.equal(isRhePage(P33_HTML), true);
+  const p = parseRhePage(P33_HTML);
+  assert.equal(p.today, '2030-01-07');
+  assert.deepEqual(p.themes.map((t) => [t.value, t.label]), [['47', '목격자'], ['46', '그날']]);
+  assert.deepEqual(p.sections.map((s) => s.name), ['목격자', '그날']);   // 'TIMES' <strong> 을 테마명으로 잡지 않는다
+  const [a, b] = p.sections;
+  assert.equal(a.level, '2.5');                                           // size25 = 2.5
+  assert.equal(a.info['인원'], '2~4인');
+  assert.deepEqual(a.slots.map((s) => [s.time, s.open, s.label]), [['10:30', false, '예약 불가'], ['16:45', true, '예약 가능']]);
+  assert.deepEqual(a.slots[1].data, { branch: 1, theme: 47, date: '2030-01-07', time: '16:45' });
+  assert.deepEqual(b.slots.map((s) => s.open), [false]);                 // 클래스가 있어도 disabled 면 불가
+  assert.deepEqual(p.range, { days: 7, openTime: '20:00' });
+  assert.equal(parseRheRange(JGB_HTML), null);                           // 토끼굴·지구별 화면에는 이 값이 없다
+});
+
+test('플레이33: 지점마다 화면의 오픈 규칙(N일 전 HH:MM)으로 열리는 시각을 계산한다', async () => {
+  const today = rheToday();
+  const at = (hm) => Date.parse(`${today}T${hm}:00+09:00`);
+  P33_SITE.noteRange(1, { days: 7, openTime: '20:00' });
+  P33_SITE.noteRange(5, { days: 7, openTime: '10:00' });
+  P33_SITE.noteRange(8, { days: 14, openTime: '00:00' });
+  assert.equal(P33_SITE.leadFor(1), 6);                                   // 20:00 전 낮 동안의 창 끝 = 오늘+6
+  assert.equal(P33_SITE.leadFor(8), 14);                                  // 자정 오픈이면 창 끝 = 오늘+14
+  for (const hm of ['09:00', '19:59', '20:00', '23:30']) {
+    const g = await P33_SITE.openInfo({ branch: 1, date: plusDays(today, 20), now: at(hm), fetchRange: false });
+    assert.equal(g.openAt, `${plusDays(today, 13)}T20:00:00+09:00`, hm);
+    assert.equal(g.leadDays, 7);
+    assert.match(g.openTimeSource, /예약 화면의 오픈 규칙 — 7일 전 20:00/);
+    const d = await P33_SITE.openInfo({ branch: 5, date: plusDays(today, 20), now: at(hm), fetchRange: false });
+    assert.equal(d.openAt, `${plusDays(today, 13)}T10:00:00+09:00`, hm);
+    const m = await P33_SITE.openInfo({ branch: 8, date: plusDays(today, 20), now: at(hm), fetchRange: false });
+    assert.equal(m.openAt, `${plusDays(today, 6)}T00:00:00+09:00`, hm);
+  }
+  // 화면을 아직 못 읽은 지점(수원 7) 은 내장 기본값(7일 전 22:00)
+  const s = await P33_SITE.openInfo({ branch: 7, date: plusDays(today, 20), now: at('12:00'), fetchRange: false });
+  assert.equal(s.openAt, `${plusDays(today, 13)}T22:00:00+09:00`);
+  assert.match(s.openTimeSource, /기본값/);
+  // 오늘+7 은 오늘 20:00 에 열린다
+  const b = await P33_SITE.openInfo({ branch: 1, date: plusDays(today, 7), now: at('19:59'), fetchRange: false });
+  assert.equal(b.openAt, `${today}T20:00:00+09:00`);
+  assert.equal(b.inWindow, false);
+  assert.equal((await P33_SITE.openInfo({ branch: 1, date: plusDays(today, 7), now: at('20:00'), fetchRange: false })).inWindow, true);
+});
+
+test('플레이33: 시간 버튼 게이트는 active1 대신 disabled 로 가르고, 1회만 누른다', () => {
+  const data = { branch: 1, theme: 47, date: '2030-01-07', time: '16:45' };
+  const mk = (disabled) => ({
+    className: 'eveReservationButton', disabled, innerText: '예약 가능 16:45', offsetParent: {}, clicks: 0, click() { this.clicks++; },
+    querySelector: (q) => (q === '.eveHiddenData' ? { textContent: JSON.stringify(data) } : q === 'span' ? { textContent: '16:45' } : null),
+  });
+  const ctx = (buttons) => vm.createContext({
+    document: {
+      querySelectorAll: (q) => (q === '.eveReservationButton' ? buttons : []),
+      querySelector: (q) => (q === '#eveSubmitForm' ? { querySelector: () => ({ value: 'FIXTURE-CSRF-TOKEN' }) } : q === 'input[name="date"]' ? { value: '2030-01-07' } : null),
+    },
+    location: { pathname: '/reservation', href: 'https://play33.kr/reservation' }, window: {},
+  });
+  const run = (c, o) => vm.runInContext(`(${rhePick.toString()})(${JSON.stringify(o)})`, c);
+  const ok = [mk(false)];
+  const c1 = ctx(ok);
+  const pv = run(c1, { ...data, activeClass: false, preview: true });
+  assert.deepEqual([...pv.problems], []);
+  assert.equal(ok[0].clicks, 0);
+  const r = run(c1, { ...data, activeClass: false });
+  assert.equal(r.ok, true);
+  assert.equal(r.btn, '예약 가능 16:45');
+  assert.equal(r.예약가능, 1);
+  assert.equal(ok[0].clicks, 1);
+  assert.match(run(c1, { ...data, activeClass: false }).problems.join('|'), /이미 클릭/);   // 두 번째는 누르지 않는다
+  assert.equal(ok[0].clicks, 1);
+  const off = [mk(true)];
+  const r2 = run(ctx(off), { ...data, activeClass: false });
+  assert.match(r2.problems.join('|'), /비활성 버튼/);
+  assert.equal(off[0].clicks, 0);
+  const r3 = run(ctx([mk(false)]), { ...data });                          // 토끼굴 규칙(active1 필수) 은 그대로
+  assert.match(r3.problems.join('|'), /active1 아님/);
+});
+
+test('플레이33: 앱 등록 — 신청서형 · 최종 버튼 자동 클릭 미지원 · 테스트 지점 제외', () => {
+  assert.equal(isFormSite('p33'), true);
+  assert.equal(SITES.p33.finalAuto, false);
+  assert.equal(SITES.p33.finalButton, '예약하기');
+  assert.match(SITES.p33.step1(1), /^https:\/\/play33\.kr\/reservation\?branch=1&theme=$/);
+  assert.deepEqual(P33.branches.map(([n]) => n), [1, 4, 5, 7, 8]);
+  assert.deepEqual(P33.blockedPay, ['1', '22']);
+});
+
+test('제로월드 다이브 건대점: 화면·API 는 s_subj=B, 다른 지점은 A', () => {
+  assert.equal(zwSubj(2), 'B');
+  assert.equal(zwSubj('2'), 'B');
+  assert.equal(zwSubj(5), 'A');
+  assert.equal(zwSubj(4), 'A');
+  assert.equal(SITES.zeroworld.step1(2), 'https://zeroworldkorea.com/layout/res/home.php?go=rev.make&s_subj=B&zizum_num=2');
+  assert.equal(SITES.zeroworld.step1(5), 'https://zeroworldkorea.com/layout/res/home.php?go=rev.make&s_subj=A&zizum_num=5');
+  assert.deepEqual(SITES.zeroworld.branches.map(([n]) => n), [4, 5, 2]);
+});
+
+test('키이스케이프 지점: 백산방역 추가(09:30) · 에버랜드·무비무드 제외', () => {
+  const nums = BRANCHES.map(([n]) => n);
+  assert.ok(nums.includes(31));
+  for (const gone of [26, 25, 29]) assert.ok(!nums.includes(gone), String(gone));
+  assert.equal(OPEN_TIME_FALLBACK['백산방역'], '09:30');
+  const html = '<div>[ 지점별 예약 오픈 시간 ]<ul><li>백산방역 - 09:30</li><li>더오름점, 우주라이크점, LOG_IN 1, 2 - 10:00</li><li>무비무드 - 13:30</li><li>홍대점 - 20:00</li></ul></div>';
+  const map = parseOpenTimes(html);
+  assert.equal(map['백산방역'], '09:30');
+  assert.equal(map['LOG_IN 2'], '10:00');
+  assert.equal(map['홍대점'], '20:00');
+  assert.equal(map['무비무드'], undefined);                              // 목록에서 뺀 지점은 표에 올리지 않는다
+});
+

@@ -17,11 +17,14 @@ export const HDR = {
   'Referer': 'https://www.keyescape.com/reservation1.php',
 };
 
-/** reservation1.php #zizum 옵션 (사이트 정적 markup) */
+/** reservation1.php #zizum 옵션 (사이트 정적 markup)
+ *  사이트에는 있지만 사용자 요청으로 뺀 지점 (2026-11-16):
+ *    에버랜드(26) — 지점 안내 "예약은 에버랜드 앱을 통해 가능" → 이 사이트로는 전 날짜 '예약 가능 한 날짜가 아닙니다'
+ *    무비무드(25) · 무비무드 전주(29) */
 export const BRANCHES = [
-  [26, '에버랜드'], [23, '후즈데어'], [22, 'STATION'], [19, 'LOG_IN 1'], [20, 'LOG_IN 2'],
+  [31, '백산방역'], [23, '후즈데어'], [22, 'STATION'], [19, 'LOG_IN 1'], [20, 'LOG_IN 2'],
   [18, '메모리컴퍼니'], [16, '우주라이크'], [14, '더오름'], [3, '강남점'], [10, '홍대점'],
-  [9, '부산점'], [7, '전주점'], [25, '무비무드'], [29, '무비무드 전주'],
+  [9, '부산점'], [7, '전주점'],
 ];
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -337,9 +340,9 @@ export function step2Submit(opt) {
  * "예약 가능 한 날짜가 아닙니다" 가 나온다. 즉 창 = 오늘 포함 n+1 일, 그 날짜는 D-n 에 열린다.
  */
 export const OPEN_TIME_FALLBACK = {
+  '백산방역': '09:30',   // 2026-11 신규 지점 (reservation.php 표 + 지점 안내 "예약 오픈 시간은 9:30")
   '더오름': '10:00', '우주라이크': '10:00', 'LOG_IN 1': '10:00', 'LOG_IN 2': '10:00',
   '메모리컴퍼니': '10:30', '후즈데어': '11:00', 'STATION': '11:30',
-  '무비무드': '13:30', '무비무드 전주': '13:30',
   '강남점': '18:00', '부산점': '18:00', '전주점': '18:00', '홍대점': '20:00',
 };
 export const LEAD_DAYS_FALLBACK = 6;   // 실측: 오늘 포함 7일 창 (오늘 +6일까지만 슬롯 목록이 뜬다)
@@ -379,7 +382,7 @@ export function parseOpenTimes(html) {
       .split(',').map((s) => s.trim()).filter(Boolean);
     for (const [, name] of BRANCHES) {
       const base = name.replace(/점$/, '');
-      // 사이트는 본점만 적는다 → '무비무드' 한 줄이 '무비무드 전주' 도 커버한다고 본다
+      // 사이트가 지점명을 줄여 적는 경우('더오름점'↔'더오름', 'LOG_IN 1, 2') 를 앞머리 일치로 맞춘다
       if (names.some((n) => n === name || n === base || n.startsWith(name) || n.startsWith(base) || name.startsWith(n))) map[name] = m[2];
     }
   }
@@ -393,7 +396,7 @@ export async function openTimeMap(force) {
   try {
     const html = await fetch('https://www.keyescape.com/reservation.php', { headers: { ...HDR }, signal: AbortSignal.timeout(9000) }).then((r) => r.text());
     const map = parseOpenTimes(html);
-    // 사이트 표가 이기되, 사이트가 본점만 적어 빠진 지점(예: LOG_IN 2, 무비무드 전주) 은 내장 표로 메꾼다
+    // 사이트 표가 이기되, 사이트 표에서 빠진 지점은 내장 표로 메꾼다
     if (map) OPEN_CACHE = { at: Date.now(), map: { ...OPEN_TIME_FALLBACK, ...map }, source: 'reservation.php' };
   } catch { /* 오프라인/차단 → 폴백 */ }
   if (!OPEN_CACHE.map) OPEN_CACHE = { at: Date.now(), map: OPEN_TIME_FALLBACK, source: '내장 표(폴백)' };

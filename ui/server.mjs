@@ -24,7 +24,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { BRANCHES, getThemes, getTimes, getCalendar, cdpList, cdp, keTab, STEP2_READ, openInfo, noteWindow, personal } from './lib.mjs';
-import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS, rheNoteWindow, rheCreateRead, RHE, JGB_SITE, isFormSite, ptdCatalog, parsePtdCatalog, ptdDay, ptdRead, oasCreateRead } from './sites.mjs';
+import { siteOf, SITES, zwThemes, apiTimes, apiOpenInfo, apiBranches, apiToday, apiThemes, siteTab, ZW_READ, dpsMonth, parseDpsDay, dpsLogin, DPS, rheNoteWindow, rheCreateRead, RHE, JGB_SITE, P33_SITE, isFormSite, ptdCatalog, parsePtdCatalog, ptdDay, ptdRead, oasCreateRead } from './sites.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8899);
@@ -209,7 +209,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         desktop: DESKTOP, site: site.key, siteLabel: site.label, captcha: site.captcha, siteNote: site.note,
         deposit: !!site.deposit, loginRequired: site.login === 'required', naverBank: NAVER_BANK,
-        flow: site.flow || '', finalButton: site.finalButton || '', finalMeans: site.finalMeans || '',
+        flow: site.flow || '', finalButton: site.finalButton || '', finalMeans: site.finalMeans || '', finalAuto: site.finalAuto !== false,
         sites: Object.values(SITES).map((s) => ({
           key: s.key, label: s.label, captcha: s.captcha,
           deposit: !!s.deposit, login: s.login === 'required' ? 'required' : 'none', flow: s.flow || '',
@@ -292,7 +292,7 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { ok: true, site, serverToday: today, days: out });
       }
-      if (site === 'rhe' || site === 'jgb' || site === 'oas') {   // 오늘~창 끝 롤링 창 — 창 밖 날짜는 서버가 되돌린다 → 그 뒤는 물지 않는다
+      if (site === 'rhe' || site === 'jgb' || site === 'p33' || site === 'oas') {   // 오늘~창 끝 롤링 창 — 창 밖 날짜는 서버가 되돌린다 → 그 뒤는 물지 않는다
         let outOfWindow = false;
         for (let i = 0; i < days; i++) {
           const d = new Date(startUTC + i * 86400000).toISOString().slice(0, 10);
@@ -305,6 +305,7 @@ const server = http.createServer(async (req, res) => {
         }
         if (site === 'rhe') rheNoteWindow(today, out, a.zizum);   // 관측된 창 끝을 기억 → /api/openinfo 가 재스캔 없이 답한다
         if (site === 'jgb') JGB_SITE.noteWindow(today, out, a.zizum);
+        if (site === 'p33') P33_SITE.noteWindow(today, out, a.zizum);
         return json(res, 200, { ok: true, site, serverToday: today, days: out });
       }
       for (let i = 0; i < days; i++) {

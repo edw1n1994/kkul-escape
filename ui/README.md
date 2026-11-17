@@ -36,7 +36,7 @@ Windows 에서는 `run-server.cmd` 를 더블클릭해도 UI 서버가 뜬다(�
 | 예약 화면 | `reservation1.php` → `reservation2.php` (2단계) | `layout/res/home.php?go=rev.make&s_subj=A&zizum_num=N` (한 장) |
 | 데이터 API | `POST /controller/run_proc.php` (JSON, `t=get_theme_info_list/get_theme_date/get_theme_time`) | `POST /core/res/rev.make.sel.php` (HTML 조각, `act=calendar/theme_list/theme_select/theme_time_list/theme_time_select`) |
 | 예약 좌표 | `zizum_num` + `theme_num` + `theme_info_num` | `zizum_num` + `theme_num` (info 없음), 시간은 `theme_time_num` |
-| 지점 | 14개 (`reservation1.php` 의 `#zizum`) | **강남점(4) · 홍대점(5) 만** (김포본점(1) 은 페이지에 떠도 목록에서 제외) |
+| 지점 | 12개 (`reservation1.php` 의 `#zizum` 중 에버랜드·무비무드·무비무드 전주 제외, 백산방역 포함) | **강남점(4) · 홍대점(5) · 다이브 건대점(2, 화면 `s_subj=B`)** (김포본점(1) 은 페이지에 떠도 목록에서 제외) |
 | 예약자 폼 | `name`, `mobile1/2/3`, 약관 `agree_1`,`agree_2` | `name`, `mobile`(한 줄, `010-0000-0000` 13자), `person`(셀렉트) |
 | 자동등록방지 | reCAPTCHA | 이미지 코드 `input_captcha` |
 | 제출 | `reservation2.php` 로 직접 POST (Step1 생략) | `rev.act.php` (결과를 iframe `ifr_ok` 로 받음) — **대신 제출하지 않는다** |
@@ -251,9 +251,9 @@ reservation2 에 자동 입력될 값이고 실행할 때마다 브라우저(`lo
 5. reCAPTCHA 토큰 생성과 페이지 이동을 감시해 사용자에게 알림
    — `--auto-submit` 이 켜져 있으면 토큰이 보이는 순간 아래 검증을 통과한 뒤 `예약하기` 를 **1회** 클릭한다
 
-기본으로 하지 않는다 (직접 해야 예약이 확정된다):
-- reCAPTCHA "로봇이 아닙니다" 체크 — **어떤 경우에도 대신 클릭하지 않는다.** 토큰을 읽기만 하고
-  `grecaptcha.execute()` 나 토큰 대입 같은 코드는 이 저장소에 없다 (설치 테스트가 금지 항목으로 검사)
+기본 예약 엔진의 인증·제출 동작:
+- reCAPTCHA 체크박스는 1회 자동 클릭한다 (`--no-recaptcha-click`으로 끔). 추가 문제는 사용자가 직접 푼다.
+  아래 별도 API 모듈은 명시적으로 호출해야 하며 예약 엔진에 자동 연결되지 않는다.
 - `예약하기` 클릭 (= 실제 예약 등록 + KCP 결제 레이어) — `--auto-submit`(또는 UI 체크박스) 을 켰을 때만
 
 `--auto-submit` 은 캡차 토큰이 **이미 존재** 할 때만 동작하며, 클릭 직전 페이지 안에서 다시 검증한다:
@@ -276,8 +276,9 @@ reservation2 에 자동 입력될 값이고 실행할 때마다 브라우저(`lo
 
 1. **지점별 오픈 시각** — `https://www.keyescape.com/reservation.php` 의 `[ 지점별 예약 오픈 시간 ]` 을
    런타임에 파싱(30분 캐시, 실패 시 `OPEN_TIME_FALLBACK` 내장 표):
-   `더오름/우주라이크/LOG_IN 1·2 = 10:00` · `메모리컴퍼니 = 10:30` · `후즈데어 = 11:00` ·
-   `STATION = 11:30` · `무비무드(전주 포함) = 13:30` · `강남/부산/전주 = 18:00` · `홍대 = 20:00`
+   `백산방역 = 09:30` · `더오름/우주라이크/LOG_IN 1·2 = 10:00` · `메모리컴퍼니 = 10:30` · `후즈데어 = 11:00` ·
+   `STATION = 11:30` · `강남/부산/전주 = 18:00` · `홍대 = 20:00`
+   (에버랜드·무비무드·무비무드 전주는 2026-11-16 지점 목록에서 제외 — 에버랜드는 에버랜드 앱 전용 예약)
    사이트 응답에 `예약오픈시간 : HH:MM` 이 있으면 그 값을 우선한다.
 2. **며칠 전 오픈인지(D-n)** — 정적 페이지에 없다. `reserveWindow()` 가 오늘부터 날짜별로
    `get_theme_time` 을 불러 **슬롯 목록이 뜨는 마지막 날짜**를 찾는다. 지점/테마마다 다르다
@@ -290,7 +291,7 @@ reservation2 에 자동 입력될 값이고 실행할 때마다 브라우저(`lo
 
 `openAt = (예약 날짜 − D-n) 그 지점 오픈 시각 KST` → 실행 조건 입력란은 없고 이 값이 그대로 쓰인다.
 날짜 아래 안내문과 상단 카운트다운(`오픈까지 HH:MM:SS`)에 근거(출처·D-n·남은 시간)가 표시된다.
-표에 없는 지점(에버랜드) 은 `ok:false` → 해당 지점은 이 UI 로 자동 대기가 불가(CLI 로 `--open-at` 직접 지정).
+표에 없는 지점은 `ok:false` → 해당 지점은 이 UI 로 자동 대기가 불가(CLI 로 `--open-at` 직접 지정).
 
 ```bash
 curl 'localhost:8899/api/openinfo?zizum=18&theme=57&info=34&date=2026-09-14'

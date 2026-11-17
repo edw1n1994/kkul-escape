@@ -24,7 +24,9 @@
  *             요금표 <div id="hiddenData">{"2":48000,"3":72000,"4":96000}</div>
  *   · 제출      #eveReservationBtn → 사이트 검증(alert) → AJAX POST /reservation/payment → /reservation/done
  *             즉 **이 버튼이 곧 예약 생성 + 가상계좌 발급(입금 의무)** 이다.
- *   · 오픈 규칙 공지가 없다. 서버가 오늘~오늘+6(오늘 포함 7일) 롤링 창만 주고 창 밖 날짜는 홈으로 보낸다.
+ *   · 오픈 규칙: 공지(/notice/1) "매일 오후 11시에 일주일 뒤 날짜의 예약이 오픈" → (D-7) 23:00.
+ *             낮 동안 서버는 오늘~오늘+6 롤링 창만 주고 창 밖 날짜는 홈으로 보낸다 (23:00 에 +7 이 열린다).
+ *             (2026-10 처음 붙일 때는 공지 본문이 HTML 속성 안 JSON 이라 못 보고 '공지 없음 → 자정' 으로 가정했었다)
  *   · devtools-detector 류 디버거 차단은 없다 (vendor/common/reservation*.js 에 없음 → 해제를 걸지 않는다)
  *
  * 정책: 신청서(이름/연락처/인원/결제수단/약관) 까지는 자동으로 채운다.
@@ -41,15 +43,23 @@ export const RHE = {
   label: '방탈출 토끼굴(홍대)',
   branch: 1,
   branches: [[1, '홍대점']],
-  leadDays: 6,        // 서버 실측 창 끝 = 오늘 + 6 (사이트 달력은 +7 까지 그리지만 그날은 서버가 홈으로 되돌린다)
-  openTime: '00:00',  // 사이트에 오픈 시각 공지가 없다 → 달력 창이 밀리는 시각을 자정으로 본다(관측값이 우선)
+  leadDays: 6,        // 낮 동안(23:00 오픈 전) 서버 실측 창 끝 = 오늘 + 6. 23:00 에 +7 이 열린다 (사이트 달력은 늘 +7 까지 그린다)
+  // 공지 「예약 시스템 및 게임 플레이 안내」(2025.03.07, /notice/1):
+  //   "매일 오후 11시 예약 오픈 — 매일 11시에 일주일 뒤 날짜의 예약이 오픈됩니다 (ex. 금주 수요일 오후 11시 : 다음주 수요일 예약 오픈)"
+  //   → openAt(D) = (D-7일) 23:00 KST. 실측 2026-11-16 16:50 창 끝 = 11/22(+6), 11/23 은 302 (공지와 일치)
+  openTime: '23:00',
+  openNotice: '사이트 공지(2025.03.07) — "매일 오후 11시에 일주일 뒤 날짜의 예약이 오픈"',
   payMethod: '가상계좌',
 };
 
 /**
  * 지구별 방탈출(지구별.com = xn--2e0b040a4xj.com) — 토끼굴과 같은 제작사(토니빌리) 템플릿. 실측 2026-10-02:
  *   · 지점 3곳(1 대구점 · 2 홍대어드벤처점 · 4 홍대라스트시티점), 테마 목록은 지점마다 다르다
- *   · 창 끝: 대구 = 오늘+14, 홍대 두 곳 = 오늘+6. 창 밖이면 302 로 '직전에 본 화면' 으로 되돌린다
+ *   · 창 끝: 대구 = 오늘+14, 홍대 두 곳 = 오늘+6(22:00 전). 창 밖이면 302 로 '직전에 본 화면' 으로 되돌린다
+ *   · 오픈 규칙 = 공지 「예약 오픈시간 안내」(2024.08.16, /notice/4, 본문은 이미지 한 장):
+ *       대구점 "2주 전 0시"  → openAt(D) = (D-14) 00:00
+ *       어드벤처·라스트시티 "1주 전 22시" → openAt(D) = (D-7) 22:00 (낮 동안 창 끝 +6, 22:00 에 +7)
+ *     (2026-11-16 전에는 홍대 두 곳도 자정·D-6 으로 가정해 2시간 늦게 대기했다)
  *   · 마크업 차이: <section class="res-item clear-b">, <h2 class="ff-bhs pax3">, <span class="ff-bhs">10:15</span>,
  *     난이도는 표의 '난이도' 칸. 신청서(/reservation/create) 와 #eveReservationBtn 은 토끼굴과 같다.
  */
@@ -62,10 +72,45 @@ export const JGB = {
   label: '지구별 방탈출',
   branch: 2,
   branches: [[1, '대구점'], [2, '홍대어드벤처점'], [4, '홍대라스트시티점']],
-  leadDays: 6,
+  leadDays: 6,                  // 오픈 시각 전 낮 동안의 창 끝 (지점별 값이 우선)
   leadByBranch: { 1: 14 },
-  openTime: '00:00',
+  openTime: '00:00',            // 대구점 (지점별 값이 없으면 이 값)
+  openTimeByBranch: { 2: '22:00', 4: '22:00' },
+  openNotice: '사이트 공지(2024.08.16) — 대구점 "2주 전 0시" · 어드벤처·라스트시티 "1주 전 22시"',
   payMethod: '가상계좌',
+};
+
+/**
+ * 플레이33(play33.kr) — 같은 제작사 템플릿의 최신판. 실측 2026-11-16 (비로그인):
+ *   · 지점 select: 1 건대점 · 4 홍대점 · 5 대전점 · 6 테스트(제외) · 7 수원점 · 8 티켓투
+ *   · 마크업: <section class="reslist"> … <div class="reslist-text"><strong>테마</strong> + 표(장르/인원/시간/공포/난이도 resstep sizeN)
+ *       시간 버튼 가능 = <button class="eveReservationButton">예약 가능 <span>16:45</span><div class="dn eveHiddenData">{…}</div>
+ *                불가 = <button disabled>예약 불가 <span>10:30</span>  (토끼굴의 active1 클래스·<label> 이 없다)
+ *   · 오픈 규칙은 **화면 숨은 값**에 있다 → 화면을 받을 때마다 지점별로 읽어 쓴다 (아래 값은 읽기 전 기본값)
+ *       reservation_range_day/open_time: 건대·홍대 7일 전 20:00 · 대전 7일 전 10:00 · 수원·티켓투 7일 전 22:00
+ *     창 밖 날짜는 302 로 창 끝 날짜 화면으로 되돌린다 (토끼굴과 같음)
+ *   · 신청서(/reservation/create) 스크립트(js/reservation.form.js) 는 토끼굴과 같은 필드(name/phone/people/payment_method/policy,
+ *     #evePrice, #eveReservationBtn) 를 쓰되, 최종 버튼이 결제수단 1·22 를 '이용할 수 없습니다' 로 막고 POST /reservation
+ *     → /reservation/done#content 로 간다. **실제 신청서 화면은 아직 열어 보지 않았다** → 최종 버튼 자동 클릭은 지원하지 않는다.
+ */
+export const P33 = {
+  key: 'p33',
+  base: 'https://play33.kr',
+  page: '/reservation',
+  create: '/reservation/create',
+  done: '/reservation/done',
+  label: '플레이33',
+  branch: 4,
+  branches: [[1, '건대점'], [4, '홍대점'], [5, '대전점'], [7, '수원점'], [8, '티켓투']],
+  leadDays: 6,
+  openTime: '22:00',
+  openTimeByBranch: { 1: '20:00', 4: '20:00', 5: '10:00' },
+  liveRange: true,
+  activeClass: false,       // 가능 버튼에 active1 클래스가 없다 (disabled 여부로 가른다)
+  blockedPay: ['1', '22'],  // 사이트가 '해당 결제수단을 이용하실 수 없습니다' 로 막는 결제수단 값
+  finalAuto: false,         // 신청서 실측 전 — '예약하기' 자동 클릭(--final-submit) 미지원
+  openNotice: '예약 화면의 오픈 규칙(기본값) — 건대·홍대 7일 전 20:00 · 대전 7일 전 10:00 · 수원·티켓투 7일 전 22:00',
+  payMethod: '',
 };
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36';
@@ -93,7 +138,20 @@ export function rheOptions(html, name) {
     .map((o) => ({ value: o[1], label: text(o[2]) }));
 }
 
-/** 예약 화면 전체 → { today, branches, themes, sections:[{name, info, slots}] } (토끼굴·지구별 공통) */
+/**
+ * 화면이 싣고 있는 오픈 규칙 (플레이33 실측 2026-11-16 — 토끼굴·지구별 화면에는 없다):
+ *   <input type="hidden" id="reservation_range_day" value="7" /> <input type="hidden" id="reservation_range_open_time" value="20:00:00" />
+ *   사이트 js/reservation.js: maxDate = 오늘 + (지금 시 >= 오픈 시 ? day : day-1) → (D-day) 오픈시각 에 D 가 열린다
+ */
+export function parseRheRange(html) {
+  const h = String(html || '');
+  const days = Number((h.match(/id="reservation_range_day"[^>]*value="(\d+)"/) || [])[1]);
+  const t = (h.match(/id="reservation_range_open_time"[^>]*value="(\d{1,2}):(\d{2})/) || []);
+  if (!Number.isInteger(days) || days < 1 || !t[1]) return null;
+  return { days, openTime: `${t[1].padStart(2, '0')}:${t[2]}` };
+}
+
+/** 예약 화면 전체 → { today, branches, themes, sections:[{name, info, slots}], range } (토끼굴·지구별·플레이33 공통) */
 export function parseRhePage(html) {
   const h = String(html || '');
   const out = {
@@ -101,23 +159,31 @@ export function parseRhePage(html) {
     branches: rheOptions(h, 'branch').filter((o) => o.value),
     themes: rheOptions(h, 'theme').filter((o) => o.value),
     sections: [],
+    range: parseRheRange(h),
   };
-  for (const sec of h.split(/<section[^>]*class="res-item[\s"]/).slice(1)) {
-    const name = text((sec.match(/<h2[^>]*>([\s\S]*?)<\/h2>/) || [])[1]);
+  // 토끼굴·지구별: <section class="res-item…"><h2>테마</h2> / 플레이33: <section class="reslist"> … <div class="reslist-text"><strong>테마</strong>
+  for (const sec of h.split(/<section[^>]*class="(?:res-item|reslist)[\s"]/).slice(1)) {
+    const name = text((sec.match(/class="reslist-text"[^>]*>\s*<strong[^>]*>([\s\S]*?)<\/strong>/) || sec.match(/<h2[^>]*>([\s\S]*?)<\/h2>/) || [])[1]);
     const info = {};
     for (const row of sec.matchAll(/<th>([\s\S]*?)<\/th>\s*<td>([\s\S]*?)<\/td>/g)) info[strip(row[1])] = strip(row[2]);
-    // 토끼굴: 난이도는 <div class="res-item-step size4"> 의 눈금 개수 / 지구별: 표의 '난이도' 칸
-    const level = (sec.match(/res-item-step\s+size(\d+)/) || [])[1] || info['난이도'] || '';
+    // 토끼굴: <div class="res-item-step size4"> 의 눈금 개수 / 플레이33: <div class="resstep size2"> / 지구별: 표의 '난이도' 칸
+    const lv = (sec.match(/(?:res-item-step|resstep)\s+size(\d+)/) || [])[1] || '';
+    const level = (/^\d5$/.test(lv) ? `${lv[0]}.5` : lv) || info['난이도'] || '';   // 플레이33 size25 = 2.5
     const slots = [];
     for (const b of sec.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)) {
       const time = ((b[2].match(/<span[^>]*>\s*(\d{1,2}:\d{2})\s*<\/span>/) || [])[1] || '');
       if (!time) continue;
       const cls = (/class="([^"]*)"/.exec(b[1]) || [])[1] || '';
-      const label = strip((b[2].match(/<label>([\s\S]*?)<\/label>/) || [])[1]);
+      const disabled = /(^|\s)disabled(\s|=|$)/.test(b[1]);
+      // 토끼굴·지구별은 <label>예약가능</label>, 플레이33은 라벨 태그 없이 '예약 가능 <span>…' 글자
+      const label = strip((b[2].match(/<label>([\s\S]*?)<\/label>/) || [])[1])
+        || strip(b[2].replace(/<div[\s\S]*?<\/div>/g, '').replace(/<span[\s\S]*?<\/span>/g, ''));
       const raw = (b[2].match(/class="[^"]*eveHiddenData[^"]*">([\s\S]*?)<\/div>/) || [])[1] || '';
       let data = null;
       try { data = raw ? JSON.parse(decode(raw)) : null; } catch { data = null; }
-      slots.push({ time, label, cls: cls.trim(), data, open: /active1/.test(cls) && /예약\s*가능/.test(label) && !!data });
+      // 가능 = (토끼굴·지구별: active1 클래스 / 플레이33: eveReservationButton 이고 disabled 아님) + '예약가능' 라벨 + 예약좌표
+      const live = /active1/.test(cls) || (/eveReservationButton/.test(cls) && !disabled);
+      slots.push({ time, label, cls: cls.trim(), data, open: live && !disabled && /예약\s*가능/.test(label) && !!data });
     }
     out.sections.push({ name, info, level, slots });
   }
@@ -129,7 +195,16 @@ export function parseRhePage(html) {
  *   url · html · themes · times · noteWindow · openInfo · leadFor
  */
 export function tonySite(cfg) {
+  /** 화면이 싣고 있는 오픈 규칙(플레이33) — 지점별로 기억한다. 있으면 내장 값보다 우선 */
+  const RANGE = new Map();
+  const noteRange = (branch, rg) => { if (rg && rg.days) RANGE.set(String(branch), { at: Date.now(), ...rg }); return rg; };
+  const rangeFor = (branch) => RANGE.get(String(branch)) || null;
+  /** 지점별 매일 오픈 시각 (지구별은 대구 00:00 · 홍대 두 곳 22:00 / 플레이33은 화면 값) */
+  const openTimeFor = (branch) => (rangeFor(branch) || {}).openTime || (cfg.openTimeByBranch || {})[String(branch)] || cfg.openTime;
+  /** 오픈 시각 '전' 낮 동안의 창 끝(오늘+n). 화면 규칙이 있으면 day(자정 오픈) / day-1 */
   const lead0 = (branch) => {
+    const rg = rangeFor(branch);
+    if (rg) return rg.openTime === '00:00' ? rg.days : rg.days - 1;
     const b = (cfg.leadByBranch || {})[String(branch)];
     return b == null ? cfg.leadDays : b;
   };
@@ -173,6 +248,11 @@ export function tonySite(cfg) {
    * 4xx/5xx 는 창 밖이 아니라 요청 실패다 → 세션을 비우고 다시 받되, 그래도 실패하면 throw 해서 '창 밖' 으로 오인하지 않게 한다.
    */
   async function html(opt = {}) {
+    const page = await html0(opt);
+    if (page) noteRange(opt.branch == null ? cfg.branch : opt.branch, parseRheRange(page));
+    return page;
+  }
+  async function html0(opt = {}) {
     const u = url(opt);
     const first = await get(u);
     if (!first.redirected && first.status === 200 && isRhePage(first.html)) return first.html;
@@ -221,7 +301,8 @@ export function tonySite(cfg) {
     if (!isRhePage(h)) {
       return {
         ok: true, date, slots: [], open: 0, total: 0, notOpen: true,
-        msg: `예약 창 밖 — 서버가 예약 화면으로 되돌립니다 (이 지점은 오늘부터 +${lead0(branch)}일까지만 조회되는 롤링 창)`,
+        msg: `예약 창 밖 — 서버가 예약 화면으로 되돌립니다 (이 지점은 오늘부터 +${lead0(branch)}일까지만 조회되는 롤링 창`
+          + `${openTimeFor(branch) !== '00:00' ? `, 매일 ${openTimeFor(branch)} 에 하루 밀림` : ''})`,
       };
     }
     const p = parseRhePage(h);
@@ -257,60 +338,80 @@ export function tonySite(cfg) {
 
   /** matrix(날짜표) 를 훑은 결과를 기억해 '실제로 조회되는 창 끝' 을 openInfo 가 쓰게 한다 (지점별) */
   const WINDOW = new Map();
-  function noteWindow(today, rows, branch = cfg.branch) {
+  /** at: 날짜표를 훑은 순간(ms). 오픈 시각이 자정이 아니면 그 시각 전/후로 창 끝이 하루 다르게 보인다 */
+  function noteWindow(today, rows, branch = cfg.branch, at = Date.now()) {
     if (!Array.isArray(rows) || !today || !rows.length) return null;
     if (rows[rows.length - 1].total > 0) return null;      // 표 끝까지 창 안이면 창을 단정할 수 없다
     let last = -1;
     rows.forEach((r, i) => { if (r.total > 0) last = i; });
     if (last < 0) return null;
-    WINDOW.set(String(branch), { at: Date.now(), today, end: rows[last].date });
+    WINDOW.set(String(branch), { at, today, end: rows[last].date });
     return { today, windowEnd: rows[last].date, leadDays: last };
   }
 
-  /** 그 날짜가 예약으로 열리는 시각 (공지 없음 → 창 기준 자정, 관측된 창 끝이 있으면 그것 우선) */
-  async function openInfo({ branch = cfg.branch, date = '' } = {}) {
-    const today = rheToday();
+  /**
+   * 그 날짜가 예약으로 열리는 시각.
+   *   매일 openTime 에 창 끝이 하루 밀린다. openTime 이 자정이 아니면(토끼굴 23:00) 그 시각 전에는 창이 하루 덜 보인다
+   *   → 'D 를 며칠 전 openTime 에 여는가'(span) = 관측 창 끝 + (오늘 openTime 전에 관측했으면 1).
+   *   관측이 없으면 cfg.leadDays(오픈 전 낮 동안의 창 끝) 기준. 자정 오픈이면 보정 0 이라 예전 계산과 같다.
+   */
+  async function openInfo({ branch = cfg.branch, date = '', now = Date.now(), fetchRange = true } = {}) {
+    // 화면이 오픈 규칙을 싣는 사이트(플레이33)는 30분마다 화면에서 다시 읽는다 (운영자가 바꿀 수 있는 값)
+    const rgHit = rangeFor(branch);
+    if (cfg.liveRange && fetchRange && (!rgHit || Date.now() - rgHit.at > 1800000)) { try { await html({ branch }); } catch { /* 내장 값 */ } }
+    const rg = rangeFor(branch);
+    const kst = (ms) => new Date(ms + 9 * 3600 * 1000).toISOString();
+    const today = kst(now).slice(0, 10);
+    const ot = openTimeFor(branch);
+    const midnight = ot === '00:00';
     const w = WINDOW.get(String(branch));
-    const observed = (w && w.end && w.today === today && Date.now() - w.at < 3600000) ? w.end : null;
+    const observed = (w && w.end && w.today === today && now - w.at < 3600000) ? w : null;
     const fallback = lead0(branch);
     const base = {
       site: cfg.key, branch: (cfg.branches.find((b) => String(b[0]) === String(branch)) || [branch, cfg.branches[0][1]])[1],
-      openTime: cfg.openTime,
-      openTimeSource: `사이트에 오픈 시각 공지 없음 — 예약 창(오늘+${fallback})이 밀리는 시각을 00:00 으로 가정`,
-      leadDays: fallback, leadSource: `서버 실측 창 끝 = 오늘+${fallback}`,
-      today, date: date || null, windowEnd: observed,
+      openTime: ot,
+      openTimeSource: rg ? `예약 화면의 오픈 규칙 — ${rg.days}일 전 ${rg.openTime} (reservation_range_day/open_time)`
+        : cfg.openNotice || `사이트에 오픈 시각 공지 없음 — 예약 창(오늘+${fallback})이 밀리는 시각을 00:00 으로 가정`,
+      leadDays: fallback + (midnight ? 0 : 1), leadSource: `서버 실측 창 끝 = 오늘+${fallback}${midnight ? '' : ` (${ot} 오픈 전 기준)`}`,
+      today, date: date || null, windowEnd: observed ? observed.end : null,
     };
     if (!date) return { ok: false, ...base, note: '날짜 미선택' };
     const shift = Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / DAY_MS);
     if (shift < 0) return { ok: false, ...base, note: '지난 날짜입니다', past: true };
-    const lead = observed ? Math.round((Date.parse(observed + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / DAY_MS) : fallback;
-    const openDate = new Date(Date.parse(today + 'T00:00:00Z') + (shift - lead) * DAY_MS).toISOString().slice(0, 10);
-    const openAt = `${openDate}T${cfg.openTime}:00+09:00`;
+    const seen = observed ? Math.round((Date.parse(observed.end + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / DAY_MS) : fallback;
+    const preOpen = !midnight && (!observed || kst(observed.at).slice(11, 16) < ot);
+    const span = seen + (preOpen ? 1 : 0);
+    const openDate = new Date(Date.parse(today + 'T00:00:00Z') + (shift - span) * DAY_MS).toISOString().slice(0, 10);
+    const openAt = `${openDate}T${ot}:00+09:00`;
+    const past = Date.parse(openAt) <= now;
     return {
-      ok: true, ...base, leadDays: lead, openDate, openAt,
-      msUntil: Date.parse(openAt) - Date.now(), past: Date.parse(openAt) < Date.now(),
+      ok: true, ...base, leadDays: span, openDate, openAt,
+      msUntil: Date.parse(openAt) - now, past,
       leadSource: observed
-        ? `달력 관측 창 끝 ${observed} (오늘 +${lead}일) — 창 밖 날짜는 서버가 되돌림`
+        ? `달력 관측 창 끝 ${observed.end} (오늘 +${seen}일${preOpen ? `, ${ot} 오픈 전 관측 → +1일` : ''}) — 창 밖 날짜는 서버가 되돌림`
         : base.leadSource,
-      inWindow: shift <= lead,
-      note: shift > lead
-        ? '창 밖 날짜입니다 — 위 시각에 조회되기 시작합니다 (이 사이트는 오픈 시각 공지가 없어 자정으로 가정했습니다)'
+      inWindow: past,
+      note: !past
+        ? `창 밖 날짜입니다 — 위 시각에 조회되기 시작합니다${rg || cfg.openNotice ? '' : ' (이 사이트는 오픈 시각 공지가 없어 자정으로 가정했습니다)'}`
         : '이미 조회되는 창 안의 날짜입니다 — 지금 ' + cfg.payMethod + ' 잔여석이 있는지가 관건입니다',
     };
   }
 
-  return { cfg, url, html, themes, times, noteWindow, openInfo, leadFor: lead0, today: rheToday };
+  return { cfg, url, html, themes, times, noteWindow, noteRange, openInfo, leadFor: lead0, openTimeFor, today: rheToday };
 }
 
 export const RHE_SITE = tonySite(RHE);
 export const JGB_SITE = tonySite(JGB);
+export const P33_SITE = tonySite(P33);
+/** 같은 템플릿(시간 버튼 → /reservation/create 신청서) 사이트들 — 러너·서버가 site 키로 고른다 */
+export const TONY_SITES = { rhe: RHE_SITE, jgb: JGB_SITE, p33: P33_SITE };
 
 // 토끼굴 이름 그대로 (러너·서버·테스트가 쓰는 기존 API)
 export const rheUrl = RHE_SITE.url;
 export const rheHtml = RHE_SITE.html;
 export const rheThemes = RHE_SITE.themes;
 export const rheTimes = RHE_SITE.times;
-export const rheNoteWindow = (today, rows, branch) => RHE_SITE.noteWindow(today, rows, branch);
+export const rheNoteWindow = (today, rows, branch, at) => RHE_SITE.noteWindow(today, rows, branch, at);
 export const rheOpenInfo = RHE_SITE.openInfo;
 
 
@@ -318,8 +419,11 @@ export const rheOpenInfo = RHE_SITE.openInfo;
  * 토끼굴에는 devtools 차단이 없으므로 ext/inject.js 류 해제 없이 그대로 붙는다.          */
 
 /** 예약 화면 스냅샷 — 시간 버튼과 각 버튼이 품고 있는 예약좌표(hiddenData) */
-export function rheSlotRead() {
+export function rheSlotRead(opt) {
+  const o = opt || {};
   const vis = (e) => !!e && e.offsetParent !== null;
+  // 토끼굴·지구별은 가능 버튼에 active1 클래스 / 플레이33은 클래스 없이 disabled 여부 + '예약 가능' 글자
+  const live = (b) => (o.activeClass === false ? (!b.disabled && /예약\s*가능/.test(b.innerText || '')) : /active1/.test(b.className));
   const rows = [];
   for (const b of document.querySelectorAll('.eveReservationButton')) {
     let data = null;
@@ -327,7 +431,7 @@ export function rheSlotRead() {
     rows.push({
       time: ((b.querySelector('span') || {}).textContent || '').trim(),
       label: ((b.querySelector('label') || {}).textContent || '').trim(),
-      active: /active1/.test(b.className), visible: vis(b), data,
+      active: live(b), visible: vis(b), data,
     });
   }
   const theme = (document.querySelector('select[name="theme"]') || {}).value;
@@ -355,6 +459,7 @@ export function rheSlotRead() {
 export function rhePick(opt) {
   const o = opt || {};
   const vis = (e) => !!e && e.offsetParent !== null;
+  const live = (b) => (o.activeClass === false ? !b.disabled : /active1/.test(b.className));
   const coord = (b) => {
     try { return JSON.parse((b.querySelector('.eveHiddenData') || {}).textContent || ''); } catch { return null; }
   };
@@ -368,7 +473,7 @@ export function rhePick(opt) {
   if (!all.length) problems.push('예약가능 버튼(eveReservationButton) 0개');
   if (hit.length !== 1) problems.push('목표 시간 버튼 ' + hit.length + '개');
   if (hit.length === 1) {
-    if (!/active1/.test(hit[0].className)) problems.push('active1 아님(사이트가 불가로 그림)');
+    if (!live(hit[0])) problems.push(o.activeClass === false ? '비활성 버튼(사이트가 불가로 그림)' : 'active1 아님(사이트가 불가로 그림)');
     if (!/예약\s*가능/.test(hit[0].innerText || '')) problems.push("라벨이 '예약가능' 아님");
   }
   if (!form) problems.push('#eveSubmitForm 없음');
@@ -377,11 +482,13 @@ export function rhePick(opt) {
   if (dateInput && o.date && dateInput !== String(o.date)) problems.push('화면 날짜 ' + dateInput + '≠' + o.date);
   if (window.__RHE_PICKED) problems.push('이미 클릭한 회차입니다');
   const btn = hit[0];
-  const label = btn ? ((((btn.querySelector('label') || {}).textContent) || '').trim() + ' ' + (((btn.querySelector('span') || {}).textContent) || '').trim()) : '';
+  const label = !btn ? '' : btn.querySelector('label')
+    ? ((((btn.querySelector('label') || {}).textContent) || '').trim() + ' ' + (((btn.querySelector('span') || {}).textContent) || '').trim())
+    : String(btn.innerText || '').replace(/\s+/g, ' ').trim();
   const out = {
     ok: false, btn: label.trim(), 화면: location.pathname,
     좌표: [o.branch, o.theme, o.date, o.time].join('/'),
-    예약가능: all.filter((b) => /active1/.test(b.className)).length, problems,
+    예약가능: all.filter(live).length, problems,
   };
   if (o.preview || problems.length) return out;
   window.__RHE_PICKED = Date.now();
@@ -395,9 +502,10 @@ export function rhePick(opt) {
  * **최종 '예약하기'(#eveReservationBtn) 는 건드리지 않는다** — 그 버튼이 예약 생성 + 가상계좌 발급이기 때문이다.
  * 배경 탭에서 requestAnimationFrame 이 멈추는 문제가 있어 setTimeout 으로 대기한다(기존 사이트들과 같은 처방).
  */
-export function rheFiller(WANT) {
+export function rheFiller(WANT, OPT) {
   const t0 = performance.now();
   const want = WANT || {};
+  const blocked = ((OPT || {}).blockedPay || []).map(String);   // 사이트가 '이용할 수 없습니다' 로 막는 결제수단 (플레이33: 1·22)
   const setV = (el, v) => {
     const proto = el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
     const d = Object.getOwnPropertyDescriptor(proto, 'value');
@@ -410,7 +518,7 @@ export function rheFiller(WANT) {
       window.__RHE_FILL = { at: null, state: 'not-create-page', href: location.pathname };   // 아직 예약 화면 — 신청서는 새 문서로 뜬다
       return;
     }
-    const nameEl = document.querySelector('form[action$="/reservation/create"] [name="name"]') || document.querySelector('input[name="name"]');
+    const nameEl = document.querySelector('form[action*="/reservation/create"] [name="name"]') || document.querySelector('input[name="name"]');
     const form = nameEl ? nameEl.form : null;
     if (!form || !nameEl) {
       if (performance.now() - t0 > 20000) { window.__RHE_FILL = { at: Date.now(), state: 'err', err: '신청서 폼을 찾지 못함' }; return; }
@@ -419,7 +527,7 @@ export function rheFiller(WANT) {
     const phoneEl = form.querySelector('[name="phone"]');
     const peopleEl = form.querySelector('[name="people"]');
     const policyEl = form.querySelector('[name="policy"]');
-    const pays = Array.prototype.slice.call(form.querySelectorAll('[name="payment_method"]'));
+    const pays = Array.prototype.slice.call(form.querySelectorAll('[name="payment_method"]')).filter((p) => blocked.indexOf(String(p.value)) < 0);
     const filled = {}; const missing = [];
     if (want.name && nameEl.value !== String(want.name)) setV(nameEl, want.name);
     if (nameEl.value) filled.name = 1; else missing.push('name');
@@ -449,7 +557,7 @@ export function rheFiller(WANT) {
 
 /** 신청서 상태 스냅샷 — 자동입력 결과와 '사람이 눌러야 할 버튼'의 조건을 함께 보여준다 */
 export function rheCreateRead() {
-  const nameEl = document.querySelector('form[action$="/reservation/create"] [name="name"]') || document.querySelector('input[name="name"]');
+  const nameEl = document.querySelector('form[action*="/reservation/create"] [name="name"]') || document.querySelector('input[name="name"]');
   const form = nameEl ? nameEl.form : null;
   const val = (n) => { const e = form ? form.querySelector('[name="' + n + '"]') : null; return e ? String(e.value || '') : null; };
   const chk = (n) => { const e = form ? form.querySelector('[name="' + n + '"]') : null; return e ? !!e.checked : null; };
@@ -488,7 +596,7 @@ export function rheCreateRead() {
  */
 export function rheSubmit(opt) {
   const o = opt || {};
-  const nameEl = document.querySelector('form[action$="/reservation/create"] [name="name"]') || document.querySelector('input[name="name"]');
+  const nameEl = document.querySelector('form[action*="/reservation/create"] [name="name"]') || document.querySelector('input[name="name"]');
   const form = nameEl ? nameEl.form : null;
   const val = (n) => { const e = form ? form.querySelector('[name="' + n + '"]') : null; return e ? String(e.value || '') : null; };
   const digits = (s) => String(s || '').replace(/[^0-9]/g, '');

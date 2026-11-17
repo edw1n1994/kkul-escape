@@ -13,6 +13,7 @@
  *                 '예약가능' 버튼의 hiddenData JSON 을 사이트가 #eveSubmitForm 에 채워 POST /reservation/create
  *                 → 신청서(이름/연락처/인원/가상계좌/약관). 디테일은 ./rhe.mjs 주석에 실측 그대로 적어두었다.
  *   지구별(jgb)   토끼굴과 같은 제작사 템플릿 — 지점 3곳, 지점마다 창 길이가 다르다 (./rhe.mjs 의 tonySite)
+ *   플레이33(p33) 같은 템플릿의 최신판 — 지점 5곳, 오픈 규칙을 예약 화면 숨은 값에서 읽는다 (./rhe.mjs 의 P33)
  *   오늘의 한 페이지(ptd)  Reserv Company 예약 API(JSON) + 단일 페이지 화면 — 03 확인 화면까지 (./pagetoday.mjs)
  *   오아시스 뮤지엄(oas)   날짜별 예약 화면 HTML + getSchedule(마감 목록) — 정보 입력·동의까지 (./oasis.mjs)
  *
@@ -23,7 +24,7 @@
 import { getTimes as keGetTimes, getCalendar as keGetCalendar, openInfo as keOpenInfo, cdpList, BRANCHES, LEAD_DAYS_FALLBACK, sleep } from './lib.mjs';
 import { DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth } from './dps.mjs';
 import { naverProducts, naverPreview, naverOpenInfo, naverToday } from './naver.mjs';
-import { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, JGB, JGB_SITE } from './rhe.mjs';
+import { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, JGB, JGB_SITE, P33, P33_SITE } from './rhe.mjs';
 import { PTD, ptdThemes, ptdTimes, ptdOpenInfo, ptdToday } from './pagetoday.mjs';
 import { OAS, oasUrl, oasThemes, oasTimes, oasOpenInfo, oasToday } from './oasis.mjs';
 import fs from 'node:fs';
@@ -43,10 +44,11 @@ export const SITES = {
   },
   zeroworld: {
     key: 'zeroworld', label: '제로월드', base: 'https://zeroworldkorea.com',
-    step1: (z) => `https://zeroworldkorea.com/layout/res/home.php?go=rev.make&s_subj=A&zizum_num=${z}`,
+    step1: (z) => `https://zeroworldkorea.com/layout/res/home.php?go=rev.make&s_subj=${zwSubj(z)}&zizum_num=${z}`,
     tabMatch: 'zeroworld',
     // 김포본점(1) 은 사용자 요청으로 목록에서 제외 (사이트에는 존재하지만 이 도구에서 다루지 않는다)
-    branches: [[4, '강남점'], [5, '홍대점']],
+    // 다이브 건대점(2) 은 같은 예약엔진의 별도 브랜드 화면(s_subj=B) — zwSubj() 가 화면 주소·API 의 s_subj 를 고른다
+    branches: [[4, '강남점'], [5, '홍대점'], [2, '다이브 건대점']],
     buyerMode: 'mobile1line', agrees: [], captcha: '이미지 코드',
     needsInfo: false, note: '한 페이지에서 작성 → 이미지 코드 입력 후 예약하기 (제출은 rev.act.php, 대상 iframe ifr_ok)',
   },
@@ -89,6 +91,17 @@ export const SITES = {
     flow: 'form', finalButton: '예약하기', finalMeans: '예약 생성 + 가상계좌 발급',
     note: "로그인·자동등록방지 없음. 토끼굴과 같은 신청서(이름/연락처/인원/가상계좌/약관)를 자동 입력합니다. 최종 '예약하기'(예약 생성 + 가상계좌 발급) 는 직접 클릭합니다",
   },
+  p33: {
+    key: 'p33', label: P33.label, base: P33.base,
+    step1: (z) => P33_SITE.url({ branch: z || P33.branch }),
+    tabMatch: 'play33',
+    branches: P33.branches,
+    buyerMode: 'phone1line', agrees: [], captcha: '없음',
+    needsInfo: false, deposit: false,
+    openTime: P33.openTime, leadDays: P33.leadDays,
+    flow: 'form', finalButton: '예약하기', finalMeans: '예약 생성', finalAuto: false,
+    note: "로그인·자동등록방지 없음. 시간 버튼을 누르고 신청서(이름/연락처/인원/결제수단/약관)를 자동 입력합니다. 최종 '예약하기'(예약 생성) 는 직접 클릭합니다 — 이 사이트는 자동 클릭을 지원하지 않습니다",
+  },
   ptd: {
     key: 'ptd', label: PTD.label, base: PTD.base,
     step1: () => PTD.base + PTD.page,
@@ -117,6 +130,9 @@ export const isFormSite = (k) => (SITES[String(k || '')] || {}).flow === 'form';
 export const siteOf = (k) => SITES[String(k || 'keyescape').toLowerCase()] || SITES.keyescape;
 
 /* ===================== 제로월드: rev.make.sel.php ===================== */
+/** 예약 화면 분류 — 제로월드 지점은 A, '제로월드 다이브'(건대점 2) 는 B (실측 2026-11-16: home.php?go=rev.make&s_subj=B&zizum_num=2) */
+const ZW_SUBJ = { 2: 'B' };
+export const zwSubj = (zizum) => ZW_SUBJ[Number(zizum)] || 'A';
 const ZW_URL = 'https://zeroworldkorea.com/core/res/rev.make.sel.php';
 const ZW_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36';
 const ZW_HDR = {
@@ -152,7 +168,7 @@ async function zwSel(data, timeout = 9000) {
 
 /** 지점의 테마 목록 → [{theme,name,genre,level,play,minPerson}] */
 export async function zwThemes(zizum, refDate = zwDate(0)) {
-  const html = await zwSel(`act=theme_list&zizum_num=${Number(zizum)}&rev_days=${refDate}&theme_num=&s_subj=A`);
+  const html = await zwSel(`act=theme_list&zizum_num=${Number(zizum)}&rev_days=${refDate}&theme_num=&s_subj=${zwSubj(zizum)}`);
   const picks = [...html.matchAll(/fun_theme_select\('(\d+)','\d+'\)/g)].map((m) => m[1]);
   const names = [...html.matchAll(/choice-themes__name">([^<]+)</g)].map((m) => m[1].trim());
   const genres = [...html.matchAll(/choice-themes__genre">([^<]+)</g)].map((m) => m[1].trim());
@@ -220,7 +236,7 @@ export async function zwCalendarDates(zizum, refDate = zwDate(0)) {
   for (let i = 0; i < 2; i++) {   // 창이 다음 달을 넘어갈 수 있어 두 달치 본다
     const mo = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + i, 1));
     const html = await zwSel(`act=calendar&zizum_num=${Number(zizum)}&rev_days=${refDate}`
-      + `&year=${mo.getUTCFullYear()}&month=${mo.getUTCMonth() + 1}&s_subj=A`);
+      + `&year=${mo.getUTCFullYear()}&month=${mo.getUTCMonth() + 1}&s_subj=${zwSubj(zizum)}`);
     for (const m of html.matchAll(/fun_days_select\('(\d{4}-\d{2}-\d{2})'/g)) out.add(m[1]);
     await sleep(130);
   }
@@ -298,12 +314,14 @@ export async function zwBranches(force = false) {
   try {
     const html = await fetch('https://zeroworldkorea.com/layout/res/home.php?go=rev.make&s_subj=A&zizum_num=5',
       { headers: { 'User-Agent': ZW_UA }, signal: AbortSignal.timeout(9000) }).then((r) => r.text());
+    const htmlB = await fetch('https://zeroworldkorea.com/layout/res/home.php?go=rev.make&s_subj=B&zizum_num=2',
+      { headers: { 'User-Agent': ZW_UA }, signal: AbortSignal.timeout(9000) }).then((r) => r.text()).catch(() => '');
     const scraped = [];
-    for (const m of html.matchAll(/go=rev\.make&s_subj=A&zizum_num=(\d+)"[^>]*>([\s\S]{0,420}?)<\/a>/g)) {
+    for (const m of (html + htmlB).matchAll(/go=rev\.make&s_subj=[AB]&zizum_num=(\d+)"[^>]*>([\s\S]{0,420}?)<\/a>/g)) {
       const nm = zwBranchName(m[2]);
       if (nm && !scraped.some(([n]) => n === Number(m[1]))) scraped.push([Number(m[1]), nm]);
     }
-    // 페이지에는 김포본점 등 다른 지점도 뜬다 → 내장 목록(강남/홍대)에 있는 것만 쓰고 이름은 페이지 것으로 갱신
+    // 페이지에는 김포본점 등 다른 지점도 뜬다 → 내장 목록(강남/홍대/다이브 건대)에 있는 것만 쓰고 이름은 페이지 것으로 갱신
     const list = SITES.zeroworld.branches.map(([n, fb]) => scraped.find(([s]) => s === n) || [n, fb]);
     if (list.length) { ZW_BRANCH_CACHE.at = Date.now(); ZW_BRANCH_CACHE.branches = list; return list; }
   } catch { /* 오프라인 → 내장 표 */ }
@@ -318,6 +336,7 @@ export async function apiTimes(site, zizum, theme, date) {
   if (k === 'dps') return await dpsTimes(date);                 // 달력 한 장에 그 달 전체 슬롯이 있다
   if (k === 'rhe') return await rheTimes({ branch: zizum, theme, date });
   if (k === 'jgb') return await JGB_SITE.times({ branch: zizum, theme, date });
+  if (k === 'p33') return await P33_SITE.times({ branch: zizum, theme, date });
   if (k === 'ptd') return await ptdTimes({ theme, date });
   if (k === 'oas') return await oasTimes({ theme, date });
   return await keGetTimes(zizum, theme, date);
@@ -329,6 +348,7 @@ export async function apiOpenInfo(site, { zizum, theme, info, date }) {
   if (k === 'dps') return await dpsOpenInfo({ date });
   if (k === 'rhe') return await rheOpenInfo({ branch: zizum, date });
   if (k === 'jgb') return await JGB_SITE.openInfo({ branch: zizum, date });
+  if (k === 'p33') return await P33_SITE.openInfo({ branch: zizum, date });
   if (k === 'ptd') return await ptdOpenInfo({ date });
   if (k === 'oas') return await oasOpenInfo({ date });
   return await keOpenInfo({ zizum, theme, info, date });
@@ -340,6 +360,7 @@ export async function apiBranches(site) {
   if (k === 'dps') return SITES.dps.branches;
   if (k === 'rhe') return RHE.branches;
   if (k === 'jgb') return JGB.branches;
+  if (k === 'p33') return P33.branches;
   if (k === 'ptd') return PTD.branches;
   if (k === 'oas') return OAS.branches;
   return SITES.keyescape.branches;
@@ -351,6 +372,7 @@ export async function apiThemes(site, zizum) {
   if (k === 'zeroworld') return await zwThemes(zizum);
   if (k === 'rhe') return await rheThemes(zizum);
   if (k === 'jgb') return await JGB_SITE.themes(zizum || JGB.branch);
+  if (k === 'p33') return await P33_SITE.themes(zizum || P33.branch);
   if (k === 'ptd') return await ptdThemes();
   if (k === 'oas') return await oasThemes();
   if (k === 'dps') {
@@ -363,7 +385,7 @@ export async function apiToday(site, info) {
   const k = siteOf(site).key;
   if (k === 'naver') return naverToday();
   if (k === 'dps') return dpsToday();
-  if (k === 'rhe' || k === 'jgb') return rheToday();
+  if (k === 'rhe' || k === 'jgb' || k === 'p33') return rheToday();
   if (k === 'ptd') return ptdToday();
   if (k === 'oas') return oasToday();
   if (k === 'zeroworld') return zwDate(0);
@@ -372,7 +394,7 @@ export async function apiToday(site, info) {
 }
 export { LEAD_DAYS_FALLBACK, DPS, dpsTimes, dpsOpenInfo, dpsProducts, dpsUrl, dpsLogin, dpsToday, parseDpsDay, dpsMonth };
 export { dpsFiller, dpsBook, dpsPay, dpsSlotRead, dpsOrderRead, dpsLoginRead } from './dps.mjs';
-export { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, rheNoteWindow, rheHtml, isRhePage, parseRhePage, rheFiller, rhePick, rheSlotRead, rheCreateRead, rheSubmit, JGB, JGB_SITE, RHE_SITE } from './rhe.mjs';
+export { RHE, rheUrl, rheThemes, rheTimes, rheOpenInfo, rheToday, rheNoteWindow, rheHtml, isRhePage, parseRhePage, rheFiller, rhePick, rheSlotRead, rheCreateRead, rheSubmit, JGB, JGB_SITE, RHE_SITE, P33, P33_SITE, TONY_SITES, parseRheRange } from './rhe.mjs';
 export { PTD, ptdCatalog, parsePtdCatalog, ptdDay, ptdRead, ptdPick, ptdSubmit } from './pagetoday.mjs';
 export { OAS, oasUrl, oasSlotRead, oasPick, oasFiller, oasCreateRead, oasSubmit } from './oasis.mjs';
 

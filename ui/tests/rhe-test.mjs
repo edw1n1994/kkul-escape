@@ -230,6 +230,22 @@ test('신청서 입력기: 이름·연락처(010-0000-0000)·인원·결제수�
   assert.equal(f.btn.clicks, 0);                          // '예약하기'는 절대 누르지 않는다
 });
 
+test('신청서 입력기: 사이트가 막는 결제수단(플레이33 1·22)은 후보에서 빼고, 남은 것이 하나일 때만 고른다', () => {
+  const runWith = (f, opt) => { vm.runInContext(`(${rheFiller.toString()})(${JSON.stringify({ name: '김토끼', phone: '01012345678' })},${JSON.stringify(opt)})`, f.ctx); return f.ctx.window.__RHE_FILL; };
+  const f = fillCtx({ pays: ['1', '21', '22'] });
+  const st = runWith(f, { blockedPay: ['1', '22'] });
+  assert.equal(st.filled.pay, '21');
+  assert.deepEqual(f.pays.map((p) => p.clicks), [0, 1, 0]);
+  assert.equal(f.btn.clicks, 0);
+  const g = fillCtx({ pays: ['1', '22'] });                  // 막힌 것뿐이면 고르지 않고 사람에게 남긴다
+  const st2 = runWith(g, { blockedPay: ['1', '22'] });
+  assert.equal(st2.state, 'partial');
+  assert.match(st2.missing.join(','), /payment_method/);
+  assert.deepEqual(g.pays.map((p) => p.clicks), [0, 0]);
+  const h = fillCtx({ pays: ['1', '21'] });                  // 옵션 없이 부르면(토끼굴·지구별) 예전처럼 둘 다 후보 → 사람이 고른다
+  assert.match(runWith(h, undefined).missing.join(','), /선택지 2개/);
+});
+
 test('신청서 입력기: 인원 지정은 옵션에 있을 때만, 결제수단이 여러 개면 사람이 고르게 둔다', () => {
   const f = fillCtx({ pays: ['21', '30'] });
   const st = f.run({ name: '김토끼', phone: '010-1234-5678', people: '4' });
@@ -269,21 +285,36 @@ test('신청서 스냅샷: 입력 결과와 버튼 상태를 읽는다 (버튼�
   assert.equal(f.btn.clicks, 0);
 });
 
-/* ---------------- 오픈 규칙 (공지 없음 → 오늘~오늘+6 롤링 창) ---------------- */
-test('오픈 정보: 공지 없는 사이트라 예약 창(오늘+6) 기준 자정으로 안내한다', async () => {
+/* ---------------- 오픈 규칙 (공지: 매일 23:00 에 일주일 뒤 날짜 오픈 → (D-7) 23:00) ---------------- */
+const kstAt = (date, hm) => Date.parse(`${date}T${hm}:00+09:00`);
+
+test('오픈 정보: 공지대로 일주일 전 23:00 에 열린다고 안내한다 (23:00 전후 모두)', async () => {
   const today = rheToday();
-  const info = await rheOpenInfo({ date: plusDays(today, 20) });
-  assert.equal(info.ok, true);
-  assert.equal(info.openTime, '00:00');
-  assert.equal(info.leadDays, 6);                       // 서버 실측 창 끝 (사이트 달력의 +7 은 서버가 302 로 거부)
-  assert.equal(info.inWindow, false);
-  assert.equal(info.openDate, plusDays(today, 14));     // 오늘+20 은 오늘+14 에 열리기 시작
-  assert.match(info.openAt, /T00:00:00\+09:00$/);
-  assert.match(info.openTimeSource, /공지 없음/);
-  const inside = await rheOpenInfo({ date: plusDays(today, 2) });
+  for (const hm of ['10:00', '22:59', '23:00', '23:30']) {
+    const now = kstAt(today, hm);
+    const info = await rheOpenInfo({ date: plusDays(today, 20), now });
+    assert.equal(info.ok, true);
+    assert.equal(info.openTime, '23:00');
+    assert.equal(info.leadDays, 7, hm);                  // 낮 동안 창 끝 +6 (오픈 전) + 오늘 23:00 에 +7
+    assert.equal(info.inWindow, false);
+    assert.equal(info.openDate, plusDays(today, 13), hm); // 오늘+20 은 오늘+13 의 23:00 에 열린다
+    assert.match(info.openAt, /T23:00:00\+09:00$/);
+    assert.match(info.openTimeSource, /공지/);
+    assert.doesNotMatch(info.openTimeSource, /공지 없음/);
+  }
+  // 오늘+7: 오늘 23:00 에 열린다 → 23:00 전엔 창 밖, 23:00 부터 창 안
+  const before = await rheOpenInfo({ date: plusDays(today, 7), now: kstAt(today, '22:59') });
+  assert.equal(before.openAt, `${today}T23:00:00+09:00`);
+  assert.equal(before.inWindow, false);
+  assert.equal(before.past, false);
+  assert.equal(before.msUntil, 60000);
+  const after = await rheOpenInfo({ date: plusDays(today, 7), now: kstAt(today, '23:00') });
+  assert.equal(after.inWindow, true);
+  assert.equal(after.past, true);
+  const inside = await rheOpenInfo({ date: plusDays(today, 2), now: kstAt(today, '12:00') });
   assert.equal(inside.inWindow, true);
   assert.equal(inside.past, true);                      // 창 안 날짜의 오픈 시각은 이미 지났다
-  const past = await rheOpenInfo({ date: plusDays(today, -1) });
+  const past = await rheOpenInfo({ date: plusDays(today, -1), now: kstAt(today, '12:00') });
   assert.equal(past.past, true);
   assert.equal(past.ok, false);
   const none = await rheOpenInfo({});
@@ -292,18 +323,24 @@ test('오픈 정보: 공지 없는 사이트라 예약 창(오늘+6) 기준 자�
   assert.equal(RHE.payMethod, '가상계좌');
 });
 
-test('오픈 정보: 날짜표를 훑어 관측한 창 끝을 다음 안내에 우선 반영한다', async () => {
+test('오픈 정보: 관측한 창 끝을 우선하고, 23:00 전 관측이면 하루를 더한다', async () => {
   const today = rheToday();
   const rows = [3, 4, 5].map((n) => ({ date: plusDays(today, n), total: 6 })).concat([{ date: plusDays(today, 6), total: 0 }]);
-  const noted = rheNoteWindow(today, rows);
+  const noted = rheNoteWindow(today, rows, 1, kstAt(today, '12:00'));
   assert.equal(noted.windowEnd, plusDays(today, 5));
   assert.equal(rheNoteWindow(today, rows.map((r) => ({ ...r, total: 6 }))), null);   // 표 끝까지 창 안이면 단정하지 않는다
   assert.equal(rheNoteWindow(today, []), null);
-  const info = await rheOpenInfo({ date: plusDays(today, 12) });
-  assert.equal(info.leadDays, 5);
+  const info = await rheOpenInfo({ date: plusDays(today, 12), now: kstAt(today, '12:30') });
+  assert.equal(info.leadDays, 6);                       // 관측 +5 (12:00, 23:00 오픈 전) + 1
   assert.equal(info.windowEnd, plusDays(today, 5));
+  assert.equal(info.openDate, plusDays(today, 6));
   assert.equal(info.inWindow, false);
   assert.match(info.leadSource, /달력 관측 창 끝/);
+  // 23:00 이후에 관측한 창 끝은 이미 밀린 값이다 → 보정하지 않는다
+  rheNoteWindow(today, rows, 1, kstAt(today, '23:10'));
+  const late = await rheOpenInfo({ date: plusDays(today, 12), now: kstAt(today, '23:20') });
+  assert.equal(late.leadDays, 5);
+  assert.equal(late.openDate, plusDays(today, 7));
 });
 
 

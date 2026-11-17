@@ -7,22 +7,24 @@ const isDps = () => S.site === 'dps';
 const isNaver = () => S.site === 'naver';
 const isRhe = () => S.site === 'rhe';
 /** 신청서형 사이트 — 앱이 시간 선택과 신청서 입력까지 하고, 마지막 버튼(서버가 알려 주는 finalButton) 은 사람이 누른다 */
-const FORM_SITES = new Set(['rhe', 'jgb', 'ptd', 'oas']);
+const FORM_SITES = new Set(['rhe', 'jgb', 'p33', 'ptd', 'oas']);
 const isForm = (k = S.site) => FORM_SITES.has(k);
 const finalBtn = () => S.finalButton || '예약하기';
 /** 받침에 따라 조사를 고른다 ('예약하기'는 / '예약 확정'은) */
 const josa = (w, withJong, without) => { const c = String(w).charCodeAt(String(w).length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 ? withJong : without; };
 const FORM_HINT = {
-  rhe: '토끼굴은 <b>오늘부터 +6일까지만 조회되는 롤링 창</b>입니다.',
-  jgb: '지구별은 <b>지점마다 예약 창이 다릅니다</b> (대구점 오늘+14일, 홍대 두 지점 오늘+6일 — 날짜표로 실제 창 끝을 읽습니다).',
+  rhe: '토끼굴은 <b>매일 23:00에 7일 뒤 날짜가 열립니다</b> (사이트 공지).',
+  jgb: '지구별은 <b>지점마다 오픈 규칙이 다릅니다</b> (대구점 2주 전 0시, 홍대 두 지점 1주 전 22시 — 사이트 공지).',
+  p33: '플레이33은 <b>예약 화면에 지점별 오픈 규칙이 실려 있습니다</b> (건대·홍대 7일 전 20:00, 대전 10:00, 수원·티켓투 22:00 — 화면 값을 다시 읽어 씁니다). 최종 \'예약하기\' 자동 클릭은 지원하지 않습니다.',
   ptd: '오늘의 한 페이지는 <b>예약 서버에 시간표가 있는 마지막 날짜</b>까지 예약됩니다 (지금은 오늘+6일).',
   oas: '오아시스 뮤지엄은 <b>매일 자정에 6일 뒤 날짜가 열립니다</b> (사이트 안내문).',
 };
 /** 네이버 무통장입금 예약 확정 — 서버가 켜 둔 경우(KKUL_NAVER_BANK=1)에만 화면에 보이고 실행에 실린다 */
 const bankOn = () => isNaver() && !!S.naverBank && !!$('naverConfirm')?.checked;
-/** 사이트별 '예약하기' 자동 클릭 기본값 — 단편선은 캡차가 없고 예약좌표 검증이 가능해 on, 키이스케이프는 off (토끼굴은 자동 클릭 자체가 없다) */
+/** 사이트별 '예약하기' 자동 클릭 기본값 — 단편선은 캡차가 없고 예약좌표 검증이 가능해 on.
+ *  키이스케이프도 on (2026-11-16 사용자 결정): 체크박스 자동 → 문제는 사람 → 토큰이 생기면 검증 후 1회 클릭. 신청서형 최종 버튼은 off */
 const autoKey = () => 'ke.autosub' + (isNaver() ? '.naver' : isDps() ? '.dps' : isZw() ? '.zeroworld' : isForm() ? '.' + S.site : '');
-const autoDefault = () => (isDps() || isNaver() ? '1' : '0');
+const autoDefault = () => (isDps() || isNaver() || S.site === 'keyescape' ? '1' : '0');
 const subWanted = () => (localStorage.getItem(autoKey()) !== null ? localStorage.getItem(autoKey()) : autoDefault()) === '1';
 function renderTabs() {
   const list = (S.sites && S.sites.length) ? S.sites : TABS;
@@ -35,15 +37,16 @@ function copySite() {
   $('nameWrap').style.display = $('hpWrap').style.display = isNaver() ? 'none' : '';
   $('bLock').style.display = isNaver() ? 'none' : '';
   $('openHint').innerHTML = isNaver() ? '요일별 참고 시간표입니다. 실제 회차·예약 가능 여부는 네이버 화면에서 확인합니다. 예약자 정보는 네이버 계정 정보를 사용합니다.' : isForm()
-    ? (FORM_HINT[S.site] || '') + ' 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 열리는 시각에 맞춰 시간 버튼이 자동 클릭됩니다.' + (S.site === 'oas' ? '' : ' 이 사이트는 오픈 시각 공지가 없어 창이 밀리는 시각을 자정으로 봅니다.')
+    ? (FORM_HINT[S.site] || '') + ' 창 안 날짜(이미 예약되는 날)는 대상에서 빼고, <b>아직 창 밖인 날짜</b>를 고르면 그 날짜가 열리는 시각에 맞춰 시간 버튼이 자동 클릭됩니다.' + (S.site === 'ptd' ? ' 이 사이트는 오픈 시각 공지가 없어 창이 밀리는 시각을 자정으로 봅니다.' : '')
     : zw
-      ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
+      ? '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 15일 이후)</b>의 시간대만 고를 수 있고, 지점 오픈 시각(홍대 12:00 / 강남 11:30 / 다이브 건대는 오픈 전 첫 조회 때 — 서버 문구에서 읽음)에 시간 목록이 뜨는 그 순간 자동 선택됩니다.'
       : '이미 예약이 열린 날짜 / 지난 날짜는 대상에서 뺍니다(<b>이미 오픈</b>으로 표시, 클릭 불가). <b>아직 오픈 전인 날짜(보통 7일 이후)</b>의 시간대만 고를 수 있고, 오픈 시각에 <code>enable=Y</code> 로 바뀌는 그 순간 자동 제출됩니다.';
   $('step2Title').firstChild.textContent = isNaver() ? '네이버 예약 상태 ' : isForm() ? '신청서 상태 ' : zw ? '예약 폼 상태 ' : 'Step2 도착 상태 ';
   if ($('rhePersonWrap')) $('rhePersonWrap').style.display = isForm() ? '' : 'none';   // '예약 인원' 은 신청서형 사이트에만 있다
   // '예약하기' 자동 클릭: 키이스케이프 Step2(opt-in) · 단편선(기본 on — 캡차 없음) · 제로월드(사용자 코드 입력 후 opt-in)
   // 신청서형 사이트: 마지막 버튼(예약 생성·결제 화면 이동) 자동 클릭은 사이트별 opt-in (기본 off, 켤 때 확인)
-  $('subRow').style.display = 'flex';
+  // 플레이33처럼 최종 버튼 자동 클릭을 지원하지 않는 신청서형 사이트는 체크박스를 숨긴다 (서버 env.finalAuto)
+  $('subRow').style.display = isForm() && S.finalAuto === false ? 'none' : 'flex';
   renderSub();
 }
 /** 자동 클릭 두 개(예약하기 / 결제하기) 의 라벨·체크박스·경고 문구를 현재 사이트/상태에 맞게 다시 그린다 */
@@ -168,7 +171,7 @@ async function loadEnv() {
   if (S.cdp !== e.cdp_port) { lockVersion++; S.unlock = null; }
   S.cdp = e.cdp_port;
   S.naverBank = !!e.naverBank;
-  S.finalButton = e.finalButton || ''; S.finalMeans = e.finalMeans || '';
+  S.finalButton = e.finalButton || ''; S.finalMeans = e.finalMeans || ''; S.finalAuto = e.finalAuto !== false;
   if (e.cdp !== 'OK' && S.site === 'keyescape' && !S.unlockFixing) { lockVersion++; updateLock('disconnected', '개발자모드 · 브라우저 연결 필요'); }
   $('reconnectBrowser').style.display = e.desktop ? '' : 'none';
   if (e.sites) S.sites = e.sites;
@@ -363,7 +366,7 @@ async function fire(dry, wo) {
     dep: ($('dep').value || '').trim(),
   };
   if (isForm()) {
-    // 신청서형 사이트는 오픈 시각 공지가 없어 예약 창이 밀리는 자정으로 본다 → 조회가 시작되는 순간을 넓게 잡는다
+    // 신청서형 사이트는 창이 밀리는 시각이 공지·관측 기반이라 몇 분 어긋날 수 있다 → 조회가 시작되는 순간을 넓게 잡는다
     body.deadline = Math.max(DEF.deadline, 600);
     const p = $('rhePerson') ? $('rhePerson').value : '';
     if (p) body.person = p;   // 신청서의 '예약 인원' — 미선택이면 러너가 화면의 테마 최소 인원으로 채운다
@@ -382,7 +385,7 @@ async function fire(dry, wo) {
     if (new Date(iso).getTime() < Date.now() && !confirm('이미 오픈된 날짜입니다. 즉시 시도합니다. 계속할까요?')) return;
     body.openAt = iso;
   }
-  if (!dry && !wo && $('autosub') && isForm()) body.finalSubmit = $('autosub').checked;   // 신청서형: 최종 버튼 자동 1회 (opt-in)
+  if (!dry && !wo && $('autosub') && isForm() && S.finalAuto !== false) body.finalSubmit = $('autosub').checked;   // 신청서형: 최종 버튼 자동 1회 (opt-in)
   if (!dry && !wo && $('autosub') && !isForm()) {
     body.autoSubmit = $('autosub').checked;      // 단편선은 서버가 autoSubmit===false 를 --no-auto-submit 으로 바꾼다
     if (isDps() && $('paybtn').checked) body.paySubmit = true;   // 최종 '결제하기' — 이 체크박스에서만 켜진다 (기본 off)

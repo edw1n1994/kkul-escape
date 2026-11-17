@@ -6,7 +6,8 @@
  *        --times "19:50,20:20" --tname "FILM BY EDDY" \
  *        [--open-at 2026-09-04T10:30:00+09:00] [--deadline 60] [--port 9222] \
  *        [--name 홍길동 --hp 010-0000-0000] [--agrees agree_1,agree_2] [--dry]
- *        [--auto-submit]  (키이스케이프) 캡차 통과 감지 후 '예약하기' 1회 클릭 (기본 off / 체크박스는 자동, 문제는 직접 해결)
+ *        [--auto-submit]  (키이스케이프) 캡차 통과 감지 후 '예약하기' 1회 클릭 (러너는 플래그로만 켠다 — 앱 화면·scripts/schedule.mjs 는 기본으로 붙인다.
+ *                          체크박스는 자동, 문제는 직접 해결, 토큰이 생기면 검증 후 1회)
  *        [--submit-preview]  제출 대상만 보고하고 아무것도 클릭하지 않음
  *
  *   --site dps  로 단편선(dpsnnn.com/reserve_g, 아임웹) 예약을 같은 흐름으로 쓴다.
@@ -33,6 +34,7 @@
  *        [--person 2]  신청서의 예약 인원 (미지정 시 화면의 테마 최소 인원으로 채우고 WARN)
  *     캡차·로그인이 없고 devtools 차단도 없어서 해제 주입(ext/inject.js) 을 쓰지 않는다.
  *   --site jgb   지구별 방탈출 — 토끼굴과 같은 템플릿이라 같은 흐름(시간 버튼 → 신청서 자동 입력 → '예약하기' 는 사람).
+ *   --site p33   플레이33 — 같은 템플릿. 시간 버튼 → 신청서 자동 입력까지. 신청서 실측 전이라 --final-submit 은 받지 않는다.
  *   --site ptd   오늘의 한 페이지 — 화면 버튼으로 테마·날짜·시간·인원·이름·연락처를 채워 '03 확인' 에서 멈춘다.
  *     '예약 확정' 은 사람 클릭. 이 사이트는 Runtime 도메인을 켜면 개발자도구 감지 화면이 떠서 Runtime.enable 을 하지 않는다.
  *   --site oas   오아시스 뮤지엄 — 시간 버튼 → 이름·연락처·인원·동의 입력. '예약하기'(카드 결제 화면 이동) 는 사람 클릭.
@@ -60,7 +62,7 @@ import { execFile } from 'node:child_process';
 import { rpc, getTimes, cdp, keTab, filler, postNav, sleep, STEP2_READ, step2Submit, BLOCK_MARK, BRANCHES, applyUnlock, personal, maskName, maskHp } from './lib.mjs';
 import { siteOf, apiTimes, siteTab, zwFiller, zwPick, ZW_READ, apiThemes } from './sites.mjs';
 import { dpsUrl, dpsFiller, dpsBook, dpsPay, dpsSlotRead, dpsOrderRead, dpsLogin } from './sites.mjs';
-import { RHE_SITE, JGB_SITE, rheFiller, rhePick, rheSlotRead, rheCreateRead, rheSubmit, isFormSite } from './sites.mjs';
+import { TONY_SITES, rheFiller, rhePick, rheSlotRead, rheCreateRead, rheSubmit, isFormSite } from './sites.mjs';
 import { ptdRead, ptdPick, ptdSubmit, oasUrl, oasSlotRead, oasPick, oasFiller, oasCreateRead, oasSubmit } from './sites.mjs';
 
 const A = {};
@@ -121,7 +123,8 @@ const DRY = !!A.dry;
 const WATCH_ONLY = !!A['watch-only'];
 const NO_OPEN = !!A['no-open'];
 const WATCH_POLL = Math.max(Number(A['poll-open'] || 300), 120);   // 감시 전용은 서버에 예의 있게 300ms
-// 키이스케이프: reCAPTCHA 체크박스만 1회 누르고 추가 문제는 사람이 해결하며, '예약하기' 는 --auto-submit opt-in (기본 off).
+// 키이스케이프: reCAPTCHA 체크박스만 1회 누르고 추가 문제는 사람이 해결하며, '예약하기' 는 --auto-submit 일 때 토큰 확인 후 1회.
+//   (앱 화면과 schedule CLI 는 2026-11-16 부터 키이스케이프에 --auto-submit 을 기본으로 붙인다. 끄면 사람이 클릭)
 // 단편선: 캡차가 없고 예약좌표(prod_idx/start_day) 를 화면에서 검증할 수 있으므로 '예약하기' 자동 클릭이 **기본 on**
 //   (--no-auto-submit 로 끄면 사람이 클릭하고 결제화면 채움만 자동이 된다). 약관 전체동의 자동 체크도 기본 on (--no-agree-all).
 // 최종 '결제하기' 는 돈이 나가는 동작이라 **항상 기본 off** — UI 체크박스(= --pay-submit) 로만 켜진다.
@@ -132,7 +135,9 @@ const AUTO_SUBMIT = !WATCH_ONLY && (SITE.key === 'dps'
   : !!A['auto-submit'] && ['keyescape', 'zeroworld'].includes(SITE.key));
 const SUBMIT_PREVIEW = !!A['submit-preview'];
 // 신청서형 사이트의 최종 버튼 자동 1회 — 사용자가 켠 경우 전용 (기본 off). preview 는 게이트만 검사
-const FINAL_SUBMIT = !!A['final-submit'] && isFormSite(SITE.key) && !WATCH_ONLY && !DRY && !SUBMIT_PREVIEW;
+// 플레이33(finalAuto:false) 은 신청서 실측 전이라 최종 버튼 자동 클릭을 받지 않는다 (preview 검사는 허용)
+const FINAL_SUBMIT = !!A['final-submit'] && isFormSite(SITE.key) && SITE.finalAuto !== false && !WATCH_ONLY && !DRY && !SUBMIT_PREVIEW;
+if (A['final-submit'] && SITE.finalAuto === false) console.log(`[WARN] ${SITE.label} 은 '${SITE.finalButton}' 자동 클릭을 지원하지 않습니다 — 신청서 입력까지만 하고 사람에게 넘깁니다`);
 const FINAL_PREVIEW = !!A['final-preview'] && isFormSite(SITE.key) && !WATCH_ONLY && !DRY;
 const CAPTCHA_CLICK = SITE.key === 'keyescape' && !DRY && !WATCH_ONLY && !SUBMIT_PREVIEW && !A['no-recaptcha-click'];
 // 단편선은 '예약하기' 클릭(자동 또는 사람) 이후에 결제화면이 서버에서 렌더된다. 그 클릭/렌더를 기다리는 창(초).
@@ -193,8 +198,8 @@ if (!DRY && !WATCH_ONLY) {
     ? `(${dpsFiller.toString()})(${JSON.stringify(BUYER)},${JSON.stringify({ agreeAll: AGREE_ALL })})`   // 결제화면에서 이름/연락처/입금자명 + 무통장입금 + 약관 전체동의
     : SITE.key === 'zeroworld'
       ? `(${zwFiller.toString()})(${JSON.stringify(BUYER)})`
-      : (SITE.key === 'rhe' || SITE.key === 'jgb')
-        ? `(${rheFiller.toString()})(${JSON.stringify(BUYER)})`                                        // 신청서에서 이름/연락처/인원/가상계좌/약관 (최종 버튼은 사람이 클릭)
+      : TONY_SITES[SITE.key]
+        ? `(${rheFiller.toString()})(${JSON.stringify(BUYER)},${JSON.stringify({ blockedPay: TONY_SITES[SITE.key].cfg.blockedPay || [] })})`                                        // 신청서에서 이름/연락처/인원/가상계좌/약관 (최종 버튼은 사람이 클릭)
         : (SITE.key === 'ptd' || SITE.key === 'oas') ? ''                                                // 문서를 바꾸지 않는 화면 — 시간 선택 직후 같은 문서에서 채운다
           : `(${filler.toString()})(${JSON.stringify(BUYER)},${JSON.stringify(AGREES)})`;
   if (inject) await c.send('Page.addScriptToEvaluateOnNewDocument', { source: inject });
@@ -498,14 +503,16 @@ async function waitHuman(readExpr, moved) {
   } else log(`[IDLE] '${SITE.finalButton}' 클릭이 감지되지 않았습니다. 신청서 준비 상태는 그대로 유지됩니다.`);
 }
 
-/* ---------- 3-RHE) 토끼굴·지구별: 예약 화면에서 시간 버튼 1회 클릭(사이트 제출 경로) → 신청서 자동 입력 → '예약하기' 는 사람 ---------- */
-if (SITE.key === 'rhe' || SITE.key === 'jgb') {
-  const url = (SITE.key === 'jgb' ? JGB_SITE : RHE_SITE).url({ branch: Z, theme: T, date: D });
+/* ---------- 3-RHE) 토끼굴·지구별·플레이33: 예약 화면에서 시간 버튼 1회 클릭(사이트 제출 경로) → 신청서 자동 입력 → '예약하기' 는 사람 ---------- */
+if (TONY_SITES[SITE.key]) {
+  const TS = TONY_SITES[SITE.key];
+  const markup = { activeClass: TS.cfg.activeClass !== false };   // 플레이33은 가능 버튼에 active1 클래스가 없다
+  const url = TS.url({ branch: Z, theme: T, date: D });
   log(`[${SITE.key.toUpperCase()}] 예약 페이지로 이동: ${url}`);
   await c.send('Page.navigate', { url }).catch((e) => log('[FAIL] 이동 실패: ' + e.message));
   let sl = null;
   for (let i = 0; i < 60; i++) {
-    sl = await c.evaluate(`(${rheSlotRead.toString()})()`).catch(() => null);
+    sl = await c.evaluate(`(${rheSlotRead.toString()})(${JSON.stringify(markup)})`).catch(() => null);
     if (sl && sl.onReservation && sl.buttons) break;
     await sleep(250);
   }
@@ -514,7 +521,7 @@ if (SITE.key === 'rhe' || SITE.key === 'jgb') {
     버튼: (sl && sl.buttons) ?? 0, 예약가능: (sl && sl.open) ?? 0, after_hit_ms: Date.now() - tHit,
   });
   const want = { branch: Number(Z), theme: Number(T), date: D, time: hit.time };
-  const pick = (preview) => c.evaluate(`(${rhePick.toString()})(${JSON.stringify({ ...want, preview })})`)
+  const pick = (preview) => c.evaluate(`(${rhePick.toString()})(${JSON.stringify({ ...want, ...markup, preview })})`)
     .catch((e) => ({ ok: false, problems: ['evaluate 실패: ' + e.message] }));
   if (SUBMIT_PREVIEW) {
     const pv = await pick(true);
@@ -569,7 +576,7 @@ if (SITE.key === 'rhe' || SITE.key === 'jgb') {
     // 입력기가 끝나고(인원 change → 금액 표시) 화면이 안정될 때까지 잠깐 기다린다
     let st = cd;
     for (let i = 0; i < 40 && !(st && st.fillState === 'done' && /\d/.test(st.price || '')); i++) { await sleep(150); st = (await c.evaluate(readExpr).catch(() => null)) || st; }
-    const gate = { want: want4, name: BUYER.name || '', phone: HPD, people: BUYER.people || '', pay: (SITE.key === 'jgb' ? JGB_SITE : RHE_SITE).cfg.payMethod };
+    const gate = { want: want4, name: BUYER.name || '', phone: HPD, people: BUYER.people || '', pay: TS.cfg.payMethod };
     await finalStep((preview) => `(${rheSubmit.toString()})(${JSON.stringify({ ...gate, preview })})`, readExpr,
       (x) => x.onDone || !x.onCreate,
       (x) => (x.onDone ? 'success' : 'moved'), (pv) => ({ 금액: pv.price || '-', 결제수단: pv.pay || '-', 인원: pv.people || '-', 좌표: pv.좌표 || '-' }));
